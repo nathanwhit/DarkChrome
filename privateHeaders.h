@@ -1,39 +1,12 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
+
 @interface UIImageView (cells)
 - (void)_setDefaultRenderingMode:(NSInteger)arg;
 - (void)setInteractionTintColor:(id)arg;
 - (id)interactionTintColor;
 
 @end;
-
-@interface UIView (secondtoolbar)
-- (id)blurEffect;
-- (void)setEffect:(id)arg1;
-- (id)initWithEffect:(id)arg1;
-@end
-
-@interface PrimaryToolbarCoordinator
-- (id)buttonFactoryWithType:(NSInteger)arg;
-- (id)commandDispatcher;
-@end
-
-@interface SecondaryToolbarCoordinator
-- (id)buttonFactoryWithType:(NSInteger)arg;
-- (id)dispatcher;
-@end
-
-@interface ToolbarButtonVisibilityConfiguration
-- (id)initWithType:(NSInteger)arg;
-+ (id)alloc;
-@end
-
-@interface ToolbarButtonFactory
-- (id)initWithStyle:(NSInteger)arg;
-- (void)setDispatcher:(id)arg;
-- (void)setVisibilityConfiguration:(id)arg;
-+ (id)alloc;
-@end
 
 @interface ChromeTableViewStyler
 - (id)init;
@@ -45,10 +18,6 @@
 - (void)setCellSeparatorColor:(id)arg;
 @end
 
-@interface UIBlurEffect (chrome)
-+ (id)effectWithStyle:(NSInteger)arg;
-@end
-    
 @interface SettingsDetailCell
 - (void)setBackgroundColor:(id)arg;
 - (id)textLabel;
@@ -103,19 +72,6 @@
 - (id)detailTextLabel;
 @end
 
-@interface ClearBrowsingDataItem 
-{
-    UIColor* textColor;
-}
-@property(nonatomic, assign) UIColor* textColor;
-
-@end
-
-@interface ClearBrowsingDataManager
-- (id)clearButtonItem;
-- (void)addClearDataButtonToModel:(id)arg;
-@end
-
 @interface PopupMenuTableViewController
 - (id)init;
 - (id)tableView;
@@ -153,6 +109,7 @@
 - (id)label;
 - (void)configureCell:(id)cell;
 @end
+
 @interface UIView (suggestions)
 - (id)_ui_superview;
 @end
@@ -165,7 +122,4 @@
 - (NSLayoutConstraint*)fakeLocationBarHeightConstraint;
 @end
 
-@interface UIView (locbar)
-- (CGFloat)ogl_height;
-@end
 #endif
