@@ -1,0 +1,686 @@
+
+#include <os/log.h>
+#include "privateHeaders.h"
+
+// #if INPSECT==1
+#include "InspCWrapper.m"
+%ctor {
+    // watchClass(%c(PopupMenuViewController));
+   //  setMaximumRelativeLoggingDepth(20);
+    enableCompleteLogging();
+}
+// #endif
+
+static UIColor * bg = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha:1];
+static UIColor * fg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
+static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
+static UIColor * sep = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
+static UIColor * sep_alt = [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha: 1];
+static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
+static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
+static UIColor * locBar = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.09];
+static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
+static UIColor * interact_tint = [UIColor colorWithRed:0 green:0.478 blue:1 alpha:1];
+
+static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
+// static UIColor *
+
+// TABLES
+%hook ChromeTableViewStyler
+    - (id)init {
+        ChromeTableViewStyler * tblStyler = %orig;
+        [tblStyler setTableViewSectionHeaderBlurEffect:[UIBlurEffect effectWithStyle:2]];
+        [tblStyler setCellBackgroundColor:fg];
+        [tblStyler setCellTitleColor:txt];
+        [tblStyler setCellSeparatorColor:sep];
+        return tblStyler;
+    }
+    
+    - (void)setTableViewBackgroundColor:(id)arg {
+        %orig(bg);
+    }
+    
+    - (void)setCellBackgroundColor:(id)arg {
+        %orig(fg);
+    }
+    
+    - (void)setCellTitleColor:(id)arg {
+        %orig(txt);
+    }
+    
+    - (void)setCellSeparatorColor:(id)arg {
+        %orig(sep);
+    }
+%end
+    
+%hook TableViewTextHeaderFooterView
+    - (id)initWithReuseIdentifier:(id)arg {
+        TableViewTextHeaderFooterView* vw = %orig;
+        [[vw textLabel] setTextColor:white];
+        return vw;
+    }
+%end
+
+    
+%hook TableViewDisclosureHeaderFooterItem
+    - (void)configureHeaderFooterView:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        [[arg1 titleLabel] setBackgroundColor:clear];
+        [[arg1 titleLabel] setTextColor:white];
+    }
+%end  
+    
+%hook TableViewActivityIndicatorHeaderFooterItem
+    - (void)configureHeaderFooterView:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        [[arg1 titleLabel] setBackgroundColor:clear];
+        [[arg1 titleLabel] setTextColor:white];
+        [[arg1 contentView] setBackgroundColor:bg];
+    }
+%end
+    
+    
+// %hook TableViewDisclosureHeaderFooterItem
+//     - (void)configureHeaderFooterView:(id)arg1 withStyler:(id)arg2 {
+//         %orig;
+//         [[arg1 titleLabel] setBackgroundColor:bg];
+//         [[arg1 titleLabel] setTextColor:white];
+//     }
+// %end 
+    
+// %hook TableViewImageCell
+//     - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
+//         TableViewImageCell* cell = %orig;
+//         [[cell titleLabel] setTextColor:white];
+//         [[cell titleLabel] setBackgroundColor:fg];
+//         return cell;
+//     }
+// %end
+    
+%hook TableViewImageItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        [[arg1 titleLabel] setBackgroundColor:clear];
+        [[arg1 titleLabel] setTextColor:txt];
+        [[arg1 imageView] setBackgroundColor:clear];
+    }
+%end
+    
+// %hook TableViewTextLinkCell
+//     - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
+//         TableViewTextLinkCell* cell = %orig;
+//         [[cell textLabel] setTextColor:txt];
+//         [[cell textLabel] setBackgroundColor:fg];
+//         return cell;
+//     }
+//
+//     - (id)textLabel {
+//         UILabel* lbl = %orig;
+//         [lbl setTextColor:txt];
+//         [lbl setBackgroundColor:fg];
+//         return lbl;
+//     }
+// %end
+    
+%hook TableViewTextLinkItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        if ([arg1 respondsToSelector:@selector(textLabel)]) {
+            [[arg1 textLabel] setTextColor:txt];
+            [[arg1 textLabel] setBackgroundColor:fg];
+        }   
+    }
+%end
+
+//  SETTINGS->PAYMENT METHODS/ADDRESSES AND MORE   
+    
+%hook AutofillDataCell
+    - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
+        AutofillDataCell * cell = %orig;
+        [[cell textLabel] setTextColor:txt];
+        return cell;
+    }
+%end    
+%hook AutofillEditCell
+    - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
+        AutofillEditCell * cell = %orig;
+        [[cell textLabel] setTextColor:white];
+        return cell;
+    }
+%end  
+    
+// %hook SettingsTextCell
+//     - (id)initWithCoder:(id)arg {
+//         id cell = %orig;
+//         [[cell textLabel] setTextColor:txt];
+//         [[cell detailTextLabel] setTextColor:txt];
+//         [[cell inkView] setBackgroundColor:clear];
+//         return cell;
+//     }
+//     - (id)initWithFrame:(CGRect)arg {
+//         id cell = %orig;
+//         [[cell textLabel] setTextColor:txt];
+//         [[cell detailTextLabel] setTextColor:txt];
+//         [[cell inkView] setBackgroundColor:clear];
+//         return cell;
+//     }
+//     - (void) commonMDCCollectionViewCellInit {
+//         %orig;
+//         [[self textLabel] setTextColor:txt];
+//         [[self detailTextLabel] setTextColor:txt];
+//         [[self inkView] setBackgroundColor:clear];
+//     }
+// %end
+    
+    //  SETTINGS -> PRIVACY -> CLEAR BROWSING DATA
+    
+%hook ClearBrowsingDataItem
+    - (void)configureCell:(id)arg {
+        %orig;
+        // watchObject(arg);
+        [[arg textLabel] setTextColor:txt];
+        [[arg contentView] setBackgroundColor:fg];        
+    }
+%end
+    
+%hook ClearBrowsingDataCollectionViewController
+    - (id)initWithBrowserState:(id)arg {
+        id cont = %orig;
+        [[cont collectionView] setBackgroundColor:bg];
+        return cont;
+    }
+%end
+
+%hook SettingsTextItem
+    - (void)configureCell:(id)arg {
+        %orig;
+        [[arg contentView] setBackgroundColor:fg];
+        [[arg inkView] setBackgroundColor:clear];
+        [[arg textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
+        if ([arg isKindOfClass:%c(SettingsTextCell)]) {
+            id separator = MSHookIvar<UIView*>(arg, "_separatorView");
+            [separator setBackgroundColor:sep];
+            [[arg accessoryView] setTintColor:white];
+            [[arg accessoryView] setBackgroundColor:clear];
+        }
+    }
+%end
+            
+%hook TableViewURLCell
+  
+    -(void)setBackgroundColor:(id)arg {
+        %orig(fg);
+    }
+    
+    -(void)configureUILayout {
+        %orig;
+        UIStackView* stack = [self horizontalStack];
+        for (id v in [stack arrangedSubviews]) {
+            if ([v isKindOfClass:[UIStackView class]]) {
+                for (UILabel* lab in [v arrangedSubviews]) {
+                    [lab setBackgroundColor:clear];
+                    [lab setTextColor:txt];
+                }
+            } else {
+                [v setBackgroundColor:clear];
+                [v setTextColor:txt];
+            }
+        }
+        [self setHorizontalStack: stack];
+        [[self faviconContainerView] setBackgroundColor:fg];
+    }
+%end
+    
+    //  CONTENT SUGGESTIONS/NEW TAB PAGE
+
+%hook ContentSuggestionsViewController
+    // -(id)initWithStyle:(NSInteger)arg {
+//         id cont = %orig;
+//         [[[cont view] collectionView] setBackgroundColor: bg];
+//         return cont;
+//     }
+//     -(id)initWithLayout:(id)arg1 style:(NSInteger)arg2 {
+//         id cont = %orig;
+//         [[[cont view] collectionView] setBackgroundColor: bg];
+//         return cont;
+//     }
+    - (id)collectionView {
+        id v = %orig;
+        [v setBackgroundColor:bg];
+        return v;
+    }
+%end
+    
+%hook NTPMostVisitedTileView
+    - (id)initWithFrame:(CGRect)arg {
+        id tile = %orig;
+        [[tile titleLabel] setTextColor:white];
+        id imgView = [tile imageBackgroundView];
+        [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+        [imgView setTintColor: fg];
+        return tile;
+    }
+%end
+    
+%hook NTPShortcutTileView
+    - (id)initWithFrame:(CGRect)arg {
+        id tile = %orig;
+        [[tile titleLabel] setTextColor:white];
+        id imgView = [tile imageBackgroundView];
+        [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+        [imgView setTintColor: fg];
+        return tile;
+    }
+%end
+    
+%hook ContentSuggestionsArticlesHeaderCell
+    - (void)drawSeparatorIfNeeded {
+        %orig;
+        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        [separator setBackgroundColor:sep];
+    }
+    - (void)configureCell:(id)cell {
+        %orig;
+        [[self label] setTextColor:white];
+    }
+%end
+    
+%hook ContentSuggestionsFooterCell
+    - (void)drawSeparatorIfNeeded {
+        %orig;
+        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        [separator setBackgroundColor:sep];
+    }
+%end
+    
+%hook ContentSuggestionsCell
+    // - (void)commonMDCCollectionViewCellInit {
+        // %orig;
+        // id cell = self;
+        // [[cell contentView] setBackgroundColor:fg];
+        // [[cell additionalInformationLabel] setTextColor:txt];
+    // }
+    + (void)configureTitleLabel:(id)lbl {
+        %orig;
+        [lbl setTextColor:txt];
+    }
+    - (void)drawSeparatorIfNeeded {
+        %orig;
+        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        [separator setBackgroundColor:sep];
+    }
+%end
+    
+%hook UIImageView
+    - (void)setImage:(id)arg {
+        if ([self respondsToSelector:@selector(_ui_superview)]) {
+            id superview = [self _ui_superview];
+            if ([superview isKindOfClass:%c(ContentSuggestionsArticlesHeaderCell)] || [superview isKindOfClass:%c(ContentSuggestionsCell)] || [superview isKindOfClass:%c(ContentSuggestionsFooterCell)] || [superview isKindOfClass:%c(SettingsTextCell)]) {
+                
+                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+                [self setTintColor: fg];
+                if ([superview isKindOfClass:%c(SettingsTextCell)] && [[self interactionTintColor] isEqual:fg]) {
+                    // [self setInteractionTintColor:interact_tint];
+                    [self setBackgroundColor:fg];
+                    [self setTintColor: fg];
+                }
+                [[superview contentView] setBackgroundColor:nil];
+                %orig(img);
+            } else {
+                %orig;
+            }
+        }
+         else {
+            %orig;
+        }
+    }
+%end
+    
+
+// %hook MDCInkView
+//     - (void)setBackgroundColor:(id)arg {
+//         %orig(clear);
+//     }
+// %end    
+
+    
+%hook ContentSuggestionsItem
+    - (void)configureCell:(id)cell {
+        %orig;
+        if ([cell respondsToSelector: @selector(additionalInformationLabel)]) {
+            [[cell additionalInformationLabel] setTextColor:txt];
+        }
+    }
+%end
+    
+static UIVisualEffectView * visEff = nil;
+static CGFloat old = nil;
+static NSMutableArray* effectViews = [[NSMutableArray alloc] init];
+static NSLayoutConstraint* fakeLocBarH = nil;
+
+static BOOL isContentView(id v) {
+    return [v isKindOfClass: %c(_UIVisualEffectContentView)];
+}
+
+static void hideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
+    [eff setBackgroundColor:clear];
+    for (id vw in subs) {
+        [vw setHidden:true];
+    }
+}
+static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
+    [eff setBackgroundColor:oldeff];
+    for (id vw in subs) {
+        [vw setHidden:false];
+    }
+}
+
+%hook ContentSuggestionsHeaderView
+    - (void)addViewsToSearchField:(id)arg {
+        %orig;
+        [[self searchHintLabel] setTextColor:hint];
+        old = [[self fakeLocationBarHeightConstraint] constant];
+        fakeLocBarH = [self fakeLocationBarHeightConstraint];
+        [[self fakeLocationBar] setBackgroundColor:fg];
+        // watchObject([self fakeLocationBar]);
+        if ([arg isKindOfClass:%c(UIButton)] && (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil)) {
+            for (id sv in [arg subviews]) {
+                if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
+                    visEff = sv;
+                    for (id ssv in [sv subviews]) {
+                        if (!isContentView(ssv)) {
+                            [effectViews addObject:ssv];
+                        }
+                    }
+                    hideSubviews(visEff, effectViews);
+                }
+            }
+        }   
+    }
+    - (void)setFakeLocationBarHeightConstraint:(NSLayoutConstraint*)h {
+        %orig;
+        if (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil) {
+            os_log(OS_LOG_DEFAULT, "VISEFF EMPTY");
+            fakeLocBarH = [self fakeLocationBarHeightConstraint];
+            // watchObject([fakeLocBarH firstAnchor]);
+            // os_log()
+            for (id v in [self subviews]) {
+                if ([v isKindOfClass:%c(UIButton)]) {
+                    for (id sv in [v subviews]) {
+                        if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
+                            visEff = sv;
+                            for (id ssv in [visEff subviews]) {
+                                if (!isContentView(ssv)) {
+                                    [effectViews addObject:ssv];
+                                    os_log(OS_LOG_DEFAULT, "adding subview");
+                                }
+                            }
+                            hideSubviews(visEff, effectViews);
+                        }
+                    }
+                }
+            }
+        }
+    }
+%end    
+    
+%hook NSLayoutConstraint
+    - (void)setConstant:(CGFloat)c {
+        %orig;
+        if (self == fakeLocBarH) {
+            if (c == old) {
+                
+            }
+            if (visEff != nil) {
+                if (c > old) {
+                    hideSubviews(visEff, effectViews);
+                    old = c;
+                }
+                else if (c < old) {
+                    unhideSubviews(visEff, effectViews);
+                    old = c;
+                }
+            }
+        }
+    }
+%end 
+    
+
+ 
+ // NAVBARS/TOOLBARS IN MENUS (e.g. bookmarks, recent tabs)
+    
+
+    
+%hook UINavigationBar
+    - (id)initWithCoder:(id)arg {
+        UINavigationBar * nav = %orig;
+        [nav setBarStyle: UIBarStyleBlack];
+        [nav setBarTintColor:bg];
+        return nav;
+    }
+    
+    - (id)initWithFrame:(CGRect)arg {
+        UINavigationBar * nav = %orig;
+        [nav setBarStyle: UIBarStyleBlack];
+        [nav setBarTintColor:bg];
+        return nav;
+    }
+        
+%end
+    
+%hook UIToolbar
+    - (id)initWithCoder:(id)arg {
+        UIToolbar * bar = %orig;
+        [bar setBarStyle: UIBarStyleBlack];
+        [bar setBarTintColor:bg];
+        return bar;
+    }
+
+    - (id)initWithFrame:(CGRect)arg {
+        UIToolbar * bar = %orig;
+        [bar setBarStyle: UIBarStyleBlack];
+        [bar setBarTintColor:bg];
+        return bar;
+    }
+    
+    - (id)initInView:(id)arg1 withFrame:(CGRect)arg2 withItemList:(id)arg3 {
+        UIToolbar * bar = %orig;
+        [bar setBarStyle: UIBarStyleBlack];
+        [bar setBarTintColor:bg];
+        return bar;
+    }
+    
+%end
+    
+    // POPUP MENU
+%hook PopupMenuTableViewController
+    - (id)init {
+        id cont = %orig;
+        [[cont tableView] setBackgroundColor: fg];
+        // [[cont styler] setCellSeparatorColor: sep];
+        return cont;
+    }    
+%end
+    
+%hook PopupMenuViewController
+    - (void)setUpContentContainer {
+        %orig;
+        id cont = [self contentContainer];
+        for (id v in [cont subviews]) {
+            if ([v isKindOfClass:%c(UIVisualEffectView)]) {
+                [v setHidden:true];
+            }
+        }
+    }    
+%end
+    
+    // BOOKMARKS
+
+%hook BookmarkHomeViewController
+    - (void)viewWillAppear:(BOOL)arg {
+        %orig;
+        [[self tableView] setBackgroundColor:bg];
+    }
+%end
+    
+%hook BookmarkEditViewController
+    - (void)viewWillAppear:(BOOL)arg {
+        %orig;
+        [[self tableView] setBackgroundColor:bg];
+    }
+%end
+    
+%hook BookmarkParentFolderItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        if ([arg1 respondsToSelector: @selector(stackView)]) {
+            for (id v in [[arg1 stackView] arrangedSubviews]) {
+                if ([v respondsToSelector: @selector(textColor)]) {
+                    if ([[v textColor] isEqual:[UIColor colorWithWhite:0 alpha:1]]) {
+                        [v setTextColor:white];
+                    }
+                }
+            }
+        }
+    }
+%end
+
+%hook BookmarkTextFieldItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        if ([arg1 respondsToSelector: @selector(titleLabel)]) {
+            [[arg1 titleLabel] setTextColor:txt];
+        }
+    }
+%end
+    
+%hook TableViewBookmarkFolderCell
+    -(id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
+        id ret = %orig;
+        [[ret folderTitleTextField] setTextColor:white];
+        return ret;
+    }
+%end
+    
+    // READING LIST
+
+%hook ReadingListTableViewController
+    - (void)viewWillAppear:(BOOL)arg {
+        %orig;
+        [[self tableView] setBackgroundColor:bg];
+    }
+%end
+    
+    // RECENT TABS
+    
+%hook RecentTabsTableViewController
+    - (void)viewWillAppear:(BOOL)arg {
+        %orig;
+        [[self tableView] setBackgroundColor:bg];
+    }
+%end
+    
+    // HISTORY
+    
+%hook HistoryTableViewController
+    - (void)viewWillAppear:(BOOL)arg {
+        %orig;
+        [[self tableView] setBackgroundColor:bg];
+    }
+%end
+    
+    //  SETTINGS
+
+%hook SettingsDetailCell
+    - (void)setBackgroundColor:(id)arg {
+        %orig(fg);
+    }
+    - (id)textLabel {
+        UILabel * lbl = %orig;
+        [lbl setTextColor:txt];
+        return lbl;
+    }
+%end
+    
+%hook SettingsSwitchItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        if ([arg1 respondsToSelector: @selector(textLabel)]) {
+            [[arg1 textLabel] setTextColor:txt];
+        }
+    }
+    
+%end
+    
+%hook TableViewAccountItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        if ([arg1 respondsToSelector: @selector(textLabel)]) {
+            [[arg1 textLabel] setTextColor:txt];
+        }
+    }
+%end
+    
+%hook AccountControlItem
+- (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+    %orig;
+    if ([arg1 respondsToSelector: @selector(textLabel)]) {
+        [[arg1 textLabel] setTextColor:txt];
+    }
+}
+%end
+
+    //  TOOLBARS
+    
+%hook OverscrollActionsView
+    // - (void)setBackgroundColor:(id)arg {
+ //        %orig(fg);
+ //    }
+    
+    // - (void)
+    - (void)setStyle:(NSInteger)arg {
+        %orig(1);
+    }
+%end
+    
+%hook ToolbarButtonFactory
+    -(id)initWithStyle:(NSInteger)arg {
+        return %orig(1);
+    }
+%end
+
+// %hook PrimaryToolbarCoordinator
+//     - (id)buttonFactoryWithType:(NSInteger)arg {
+//         ToolbarButtonFactory * buttonMaker = [[%c(ToolbarButtonFactory) alloc] initWithStyle:1];
+//         [buttonMaker setDispatcher:[self commandDispatcher]];
+//         [buttonMaker setVisibilityConfiguration:[[%c(ToolbarButtonVisibilityConfiguration) alloc] initWithType:0]];
+//         return buttonMaker;
+//     }
+// %end
+//
+// %hook SecondaryToolbarCoordinator
+//     - (id)buttonFactoryWithType:(NSInteger)arg {
+//         ToolbarButtonFactory * buttonMaker = [[%c(ToolbarButtonFactory) alloc] initWithStyle:1];
+//         [buttonMaker setDispatcher:[self dispatcher]];
+//         [buttonMaker setVisibilityConfiguration:[[%c(ToolbarButtonVisibilityConfiguration) alloc] initWithType:1]];
+//         return buttonMaker;
+//     }
+// %end
+    
+%hook LocationBarViewController
+    -(void)setIncognito:(BOOL)arg {
+        %orig(YES);
+    }
+%end
+    
+    //  STATUSBAR
+%hook BrowserViewController
+    - (void)setNeedsStatusBarAppearanceUpdate {
+        // [self setPreferredStatusBarStyle:1];
+        %orig;
+    }
+    
+    - (NSInteger)preferredStatusBarStyle {
+        return UIStatusBarStyleLightContent;
+    }
+%end
