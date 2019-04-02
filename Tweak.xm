@@ -1,15 +1,12 @@
-
 #include <os/log.h>
 #include "privateHeaders.h"
 
-// #if INPSECT==1
+#if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    // watchClass(%c(PopupMenuViewController));
-   //  setMaximumRelativeLoggingDepth(20);
     enableCompleteLogging();
 }
-// #endif
+#endif
 
 static UIColor * bg = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha:1];
 static UIColor * fg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
@@ -23,7 +20,6 @@ static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:
 static UIColor * interact_tint = [UIColor colorWithRed:0 green:0.478 blue:1 alpha:1];
 
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
-// static UIColor *
 
 // TABLES
 %hook ChromeTableViewStyler
@@ -383,10 +379,12 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         fakeLocBarH = [self fakeLocationBarHeightConstraint];
         [[self fakeLocationBar] setBackgroundColor:fg];
         // watchObject([self fakeLocationBar]);
-        if ([arg isKindOfClass:%c(UIButton)] && (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil)) {
+        // if ([arg isKindOfClass:%c(UIButton)] && (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil)) {
+        if ([arg isKindOfClass:%c(UIButton)]) {
             for (id sv in [arg subviews]) {
                 if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
                     visEff = sv;
+                    [effectViews removeAllObjects];
                     for (id ssv in [sv subviews]) {
                         if (!isContentView(ssv)) {
                             [effectViews addObject:ssv];
@@ -399,7 +397,8 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
     }
     - (void)setFakeLocationBarHeightConstraint:(NSLayoutConstraint*)h {
         %orig;
-        if (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil) {
+        old = [[self fakeLocationBarHeightConstraint] constant];
+        // if (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil) {
             os_log(OS_LOG_DEFAULT, "VISEFF EMPTY");
             fakeLocBarH = [self fakeLocationBarHeightConstraint];
             // watchObject([fakeLocBarH firstAnchor]);
@@ -409,6 +408,7 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
                     for (id sv in [v subviews]) {
                         if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
                             visEff = sv;
+                            [effectViews removeAllObjects];
                             for (id ssv in [visEff subviews]) {
                                 if (!isContentView(ssv)) {
                                     [effectViews addObject:ssv];
@@ -420,17 +420,17 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
                     }
                 }
             }
-        }
+        // }
     }
 %end    
     
 %hook NSLayoutConstraint
     - (void)setConstant:(CGFloat)c {
         %orig;
+        if (c == old) {
+            return; 
+        }
         if (self == fakeLocBarH) {
-            if (c == old) {
-                
-            }
             if (visEff != nil) {
                 if (c > old) {
                     hideSubviews(visEff, effectViews);
