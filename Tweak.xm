@@ -1,29 +1,42 @@
+#define INSPECT 0
 
 #include <os/log.h>
 #include "privateHeaders.h"
 
-// #if INPSECT==1
+#if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    // watchClass(%c(PopupMenuViewController));
-   //  setMaximumRelativeLoggingDepth(20);
-    enableCompleteLogging();
+    watchClass(%c(GridCell));
 }
-// #endif
+#endif
 
+// COLORS
 static UIColor * bg = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha:1];
 static UIColor * fg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
 static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * sep = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
-static UIColor * sep_alt = [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha: 1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
 static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
-static UIColor * locBar = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.09];
 static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
-static UIColor * interact_tint = [UIColor colorWithRed:0 green:0.478 blue:1 alpha:1];
-
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
-// static UIColor *
+static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
+
+// CLASS OBJECTS FOR TYPE VERIFICATION
+static Class gridCellClass = %c(GridCell);
+static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
+static Class suggestCellClass = %c(ContentSuggestionsCell);
+static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
+static Class settingsTextCellClass = %c(SettingsTextCell);
+static Class visEffContentViewClass = %c(_UIVisualEffectContentView);
+static Class visEffViewClass = %c(UIVisualEffectView);
+static Class buttonClass = %c(UIButton);
+
+// TAB OVERVIEW
+%hook GridCell
+    - (void)setTheme:(NSUInteger)arg {
+        %orig(2);
+    }
+%end
 
 // TABLES
 %hook ChromeTableViewStyler
@@ -39,15 +52,15 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     - (void)setTableViewBackgroundColor:(id)arg {
         %orig(bg);
     }
-    
+
     - (void)setCellBackgroundColor:(id)arg {
         %orig(fg);
     }
-    
+
     - (void)setCellTitleColor:(id)arg {
         %orig(txt);
     }
-    
+
     - (void)setCellSeparatorColor:(id)arg {
         %orig(sep);
     }
@@ -79,24 +92,6 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     }
 %end
     
-    
-// %hook TableViewDisclosureHeaderFooterItem
-//     - (void)configureHeaderFooterView:(id)arg1 withStyler:(id)arg2 {
-//         %orig;
-//         [[arg1 titleLabel] setBackgroundColor:bg];
-//         [[arg1 titleLabel] setTextColor:white];
-//     }
-// %end 
-    
-// %hook TableViewImageCell
-//     - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
-//         TableViewImageCell* cell = %orig;
-//         [[cell titleLabel] setTextColor:white];
-//         [[cell titleLabel] setBackgroundColor:fg];
-//         return cell;
-//     }
-// %end
-    
 %hook TableViewImageItem
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
@@ -105,22 +100,6 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
         [[arg1 imageView] setBackgroundColor:clear];
     }
 %end
-    
-// %hook TableViewTextLinkCell
-//     - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
-//         TableViewTextLinkCell* cell = %orig;
-//         [[cell textLabel] setTextColor:txt];
-//         [[cell textLabel] setBackgroundColor:fg];
-//         return cell;
-//     }
-//
-//     - (id)textLabel {
-//         UILabel* lbl = %orig;
-//         [lbl setTextColor:txt];
-//         [lbl setBackgroundColor:fg];
-//         return lbl;
-//     }
-// %end
     
 %hook TableViewTextLinkItem
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
@@ -149,29 +128,6 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     }
 %end  
     
-// %hook SettingsTextCell
-//     - (id)initWithCoder:(id)arg {
-//         id cell = %orig;
-//         [[cell textLabel] setTextColor:txt];
-//         [[cell detailTextLabel] setTextColor:txt];
-//         [[cell inkView] setBackgroundColor:clear];
-//         return cell;
-//     }
-//     - (id)initWithFrame:(CGRect)arg {
-//         id cell = %orig;
-//         [[cell textLabel] setTextColor:txt];
-//         [[cell detailTextLabel] setTextColor:txt];
-//         [[cell inkView] setBackgroundColor:clear];
-//         return cell;
-//     }
-//     - (void) commonMDCCollectionViewCellInit {
-//         %orig;
-//         [[self textLabel] setTextColor:txt];
-//         [[self detailTextLabel] setTextColor:txt];
-//         [[self inkView] setBackgroundColor:clear];
-//     }
-// %end
-    
     //  SETTINGS -> PRIVACY -> CLEAR BROWSING DATA
     
 %hook ClearBrowsingDataItem
@@ -197,7 +153,7 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
         [[arg contentView] setBackgroundColor:fg];
         [[arg inkView] setBackgroundColor:clear];
         [[arg textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
-        if ([arg isKindOfClass:%c(SettingsTextCell)]) {
+        if ([arg isKindOfClass:settingsTextCellClass]) {
             id separator = MSHookIvar<UIView*>(arg, "_separatorView");
             [separator setBackgroundColor:sep];
             [[arg accessoryView] setTintColor:white];
@@ -234,16 +190,6 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     //  CONTENT SUGGESTIONS/NEW TAB PAGE
 
 %hook ContentSuggestionsViewController
-    // -(id)initWithStyle:(NSInteger)arg {
-//         id cont = %orig;
-//         [[[cont view] collectionView] setBackgroundColor: bg];
-//         return cont;
-//     }
-//     -(id)initWithLayout:(id)arg1 style:(NSInteger)arg2 {
-//         id cont = %orig;
-//         [[[cont view] collectionView] setBackgroundColor: bg];
-//         return cont;
-//     }
     - (id)collectionView {
         id v = %orig;
         [v setBackgroundColor:bg];
@@ -294,12 +240,6 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 %end
     
 %hook ContentSuggestionsCell
-    // - (void)commonMDCCollectionViewCellInit {
-        // %orig;
-        // id cell = self;
-        // [[cell contentView] setBackgroundColor:fg];
-        // [[cell additionalInformationLabel] setTextColor:txt];
-    // }
     + (void)configureTitleLabel:(id)lbl {
         %orig;
         [lbl setTextColor:txt];
@@ -311,16 +251,17 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     }
 %end
     
+
+
 %hook UIImageView
     - (void)setImage:(id)arg {
         if ([self respondsToSelector:@selector(_ui_superview)]) {
             id superview = [self _ui_superview];
-            if ([superview isKindOfClass:%c(ContentSuggestionsArticlesHeaderCell)] || [superview isKindOfClass:%c(ContentSuggestionsCell)] || [superview isKindOfClass:%c(ContentSuggestionsFooterCell)] || [superview isKindOfClass:%c(SettingsTextCell)]) {
+            if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass] || [superview isKindOfClass:settingsTextCellClass]) {
                 
                 UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
                 [self setTintColor: fg];
-                if ([superview isKindOfClass:%c(SettingsTextCell)] && [[self interactionTintColor] isEqual:fg]) {
-                    // [self setInteractionTintColor:interact_tint];
+                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
                     [self setBackgroundColor:fg];
                     [self setTintColor: fg];
                 }
@@ -336,14 +277,6 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     }
 %end
     
-
-// %hook MDCInkView
-//     - (void)setBackgroundColor:(id)arg {
-//         %orig(clear);
-//     }
-// %end    
-
-    
 %hook ContentSuggestionsItem
     - (void)configureCell:(id)cell {
         %orig;
@@ -357,9 +290,8 @@ static UIVisualEffectView * visEff = nil;
 static CGFloat old = nil;
 static NSMutableArray* effectViews = [[NSMutableArray alloc] init];
 static NSLayoutConstraint* fakeLocBarH = nil;
-
 static BOOL isContentView(id v) {
-    return [v isKindOfClass: %c(_UIVisualEffectContentView)];
+    return [v isKindOfClass: visEffContentViewClass];
 }
 
 static void hideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
@@ -382,11 +314,11 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         old = [[self fakeLocationBarHeightConstraint] constant];
         fakeLocBarH = [self fakeLocationBarHeightConstraint];
         [[self fakeLocationBar] setBackgroundColor:fg];
-        // watchObject([self fakeLocationBar]);
-        if ([arg isKindOfClass:%c(UIButton)] && (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil)) {
+        if ([arg isKindOfClass: buttonClass]) {
             for (id sv in [arg subviews]) {
-                if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
+                if ([sv isKindOfClass: visEffViewClass]) {
                     visEff = sv;
+                    [effectViews removeAllObjects];
                     for (id ssv in [sv subviews]) {
                         if (!isContentView(ssv)) {
                             [effectViews addObject:ssv];
@@ -397,40 +329,15 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
             }
         }   
     }
-    - (void)setFakeLocationBarHeightConstraint:(NSLayoutConstraint*)h {
-        %orig;
-        if (visEff == nil || [effectViews count] == 0 || fakeLocBarH == nil) {
-            os_log(OS_LOG_DEFAULT, "VISEFF EMPTY");
-            fakeLocBarH = [self fakeLocationBarHeightConstraint];
-            // watchObject([fakeLocBarH firstAnchor]);
-            // os_log()
-            for (id v in [self subviews]) {
-                if ([v isKindOfClass:%c(UIButton)]) {
-                    for (id sv in [v subviews]) {
-                        if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
-                            visEff = sv;
-                            for (id ssv in [visEff subviews]) {
-                                if (!isContentView(ssv)) {
-                                    [effectViews addObject:ssv];
-                                    os_log(OS_LOG_DEFAULT, "adding subview");
-                                }
-                            }
-                            hideSubviews(visEff, effectViews);
-                        }
-                    }
-                }
-            }
-        }
-    }
 %end    
     
 %hook NSLayoutConstraint
     - (void)setConstant:(CGFloat)c {
         %orig;
+        if (c == old) {
+            return; 
+        }
         if (self == fakeLocBarH) {
-            if (c == old) {
-                
-            }
             if (visEff != nil) {
                 if (c > old) {
                     hideSubviews(visEff, effectViews);
@@ -507,7 +414,7 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         %orig;
         id cont = [self contentContainer];
         for (id v in [cont subviews]) {
-            if ([v isKindOfClass:%c(UIVisualEffectView)]) {
+            if ([v isKindOfClass:visEffViewClass]) {
                 [v setHidden:true];
             }
         }
@@ -633,11 +540,6 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
     //  TOOLBARS
     
 %hook OverscrollActionsView
-    // - (void)setBackgroundColor:(id)arg {
- //        %orig(fg);
- //    }
-    
-    // - (void)
     - (void)setStyle:(NSInteger)arg {
         %orig(1);
     }
@@ -648,24 +550,6 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         return %orig(1);
     }
 %end
-
-// %hook PrimaryToolbarCoordinator
-//     - (id)buttonFactoryWithType:(NSInteger)arg {
-//         ToolbarButtonFactory * buttonMaker = [[%c(ToolbarButtonFactory) alloc] initWithStyle:1];
-//         [buttonMaker setDispatcher:[self commandDispatcher]];
-//         [buttonMaker setVisibilityConfiguration:[[%c(ToolbarButtonVisibilityConfiguration) alloc] initWithType:0]];
-//         return buttonMaker;
-//     }
-// %end
-//
-// %hook SecondaryToolbarCoordinator
-//     - (id)buttonFactoryWithType:(NSInteger)arg {
-//         ToolbarButtonFactory * buttonMaker = [[%c(ToolbarButtonFactory) alloc] initWithStyle:1];
-//         [buttonMaker setDispatcher:[self dispatcher]];
-//         [buttonMaker setVisibilityConfiguration:[[%c(ToolbarButtonVisibilityConfiguration) alloc] initWithType:1]];
-//         return buttonMaker;
-//     }
-// %end
     
 %hook LocationBarViewController
     -(void)setIncognito:(BOOL)arg {
@@ -675,11 +559,6 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
     
     //  STATUSBAR
 %hook BrowserViewController
-    - (void)setNeedsStatusBarAppearanceUpdate {
-        // [self setPreferredStatusBarStyle:1];
-        %orig;
-    }
-    
     - (NSInteger)preferredStatusBarStyle {
         return UIStatusBarStyleLightContent;
     }
