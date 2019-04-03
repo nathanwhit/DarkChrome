@@ -1,10 +1,12 @@
+#define INSPECT 0
+
 #include <os/log.h>
 #include "privateHeaders.h"
 
 #if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    enableCompleteLogging();
+    watchClass(%c(GridCell));
 }
 #endif
 
@@ -17,6 +19,24 @@ static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
 static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
+static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
+
+// CLASS OBJECTS FOR TYPE VERIFICATION
+static Class gridCellClass = %c(GridCell);
+static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
+static Class suggestCellClass = %c(ContentSuggestionsCell);
+static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
+static Class settingsTextCellClass = %c(SettingsTextCell);
+static Class visEffContentViewClass = %c(_UIVisualEffectContentView);
+static Class visEffViewClass = %c(UIVisualEffectView);
+static Class buttonClass = %c(UIButton);
+
+// TAB OVERVIEW
+%hook GridCell
+    - (void)setTheme:(NSUInteger)arg {
+        %orig(2);
+    }
+%end
 
 // TABLES
 %hook ChromeTableViewStyler
@@ -133,7 +153,7 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
         [[arg contentView] setBackgroundColor:fg];
         [[arg inkView] setBackgroundColor:clear];
         [[arg textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
-        if ([arg isKindOfClass:%c(SettingsTextCell)]) {
+        if ([arg isKindOfClass:settingsTextCellClass]) {
             id separator = MSHookIvar<UIView*>(arg, "_separatorView");
             [separator setBackgroundColor:sep];
             [[arg accessoryView] setTintColor:white];
@@ -231,15 +251,17 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
     }
 %end
     
+
+
 %hook UIImageView
     - (void)setImage:(id)arg {
         if ([self respondsToSelector:@selector(_ui_superview)]) {
             id superview = [self _ui_superview];
-            if ([superview isKindOfClass:%c(ContentSuggestionsArticlesHeaderCell)] || [superview isKindOfClass:%c(ContentSuggestionsCell)] || [superview isKindOfClass:%c(ContentSuggestionsFooterCell)] || [superview isKindOfClass:%c(SettingsTextCell)]) {
+            if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass] || [superview isKindOfClass:settingsTextCellClass]) {
                 
                 UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
                 [self setTintColor: fg];
-                if ([superview isKindOfClass:%c(SettingsTextCell)] && [[self interactionTintColor] isEqual:fg]) {
+                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
                     [self setBackgroundColor:fg];
                     [self setTintColor: fg];
                 }
@@ -268,9 +290,8 @@ static UIVisualEffectView * visEff = nil;
 static CGFloat old = nil;
 static NSMutableArray* effectViews = [[NSMutableArray alloc] init];
 static NSLayoutConstraint* fakeLocBarH = nil;
-
 static BOOL isContentView(id v) {
-    return [v isKindOfClass: %c(_UIVisualEffectContentView)];
+    return [v isKindOfClass: visEffContentViewClass];
 }
 
 static void hideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
@@ -293,9 +314,9 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         old = [[self fakeLocationBarHeightConstraint] constant];
         fakeLocBarH = [self fakeLocationBarHeightConstraint];
         [[self fakeLocationBar] setBackgroundColor:fg];
-        if ([arg isKindOfClass:%c(UIButton)]) {
+        if ([arg isKindOfClass: buttonClass]) {
             for (id sv in [arg subviews]) {
-                if ([sv isKindOfClass:%c(UIVisualEffectView)]) {
+                if ([sv isKindOfClass: visEffViewClass]) {
                     visEff = sv;
                     [effectViews removeAllObjects];
                     for (id ssv in [sv subviews]) {
@@ -393,7 +414,7 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         %orig;
         id cont = [self contentContainer];
         for (id v in [cont subviews]) {
-            if ([v isKindOfClass:%c(UIVisualEffectView)]) {
+            if ([v isKindOfClass:visEffViewClass]) {
                 [v setHidden:true];
             }
         }

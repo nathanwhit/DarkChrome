@@ -1,12 +1,18 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface GridCell
+- (void)setTheme:(NSUInteger)arg;
+- (id)topBar;
+- (void)updateTopBar;
+@end
+
 @interface UIImageView (cells)
 - (void)_setDefaultRenderingMode:(NSInteger)arg;
 - (void)setInteractionTintColor:(id)arg;
 - (id)interactionTintColor;
 
-@end;
+@end
 
 @interface ChromeTableViewStyler
 - (id)init;
