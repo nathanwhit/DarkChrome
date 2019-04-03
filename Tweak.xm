@@ -6,7 +6,7 @@
 #if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    watchClass(%c(GridCell));
+    watchClass(%c(OmniboxContainerView));
 }
 #endif
 
@@ -37,7 +37,7 @@ static Class buttonClass = %c(UIButton);
         %orig(2);
     }
 %end
-
+    
 // TABLES
 %hook ChromeTableViewStyler
     - (id)init {
@@ -290,6 +290,7 @@ static UIVisualEffectView * visEff = nil;
 static CGFloat old = nil;
 static NSMutableArray* effectViews = [[NSMutableArray alloc] init];
 static NSLayoutConstraint* fakeLocBarH = nil;
+static BOOL needNewVisEff = true;
 static BOOL isContentView(id v) {
     return [v isKindOfClass: visEffContentViewClass];
 }
@@ -307,18 +308,35 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
     }
 }
 
+%hook UIVisualEffectView
+    - (void)dealloc {
+        if (self == visEff) {
+            visEff = nil;
+            [effectViews removeAllObjects];
+            needNewVisEff = true;
+        }
+        %orig;
+    }
+%end
+
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
         %orig;
-        [[self searchHintLabel] setTextColor:hint];
-        old = [[self fakeLocationBarHeightConstraint] constant];
+        if ([self searchHintLabel] != nil) {
+            [[self searchHintLabel] setTextColor:hint];
+        }
         fakeLocBarH = [self fakeLocationBarHeightConstraint];
-        [[self fakeLocationBar] setBackgroundColor:fg];
-        if ([arg isKindOfClass: buttonClass]) {
+        if (fakeLocBarH != nil) {
+            old = [[self fakeLocationBarHeightConstraint] constant];
+        }
+        if ([self fakeLocationBar] != nil) {
+            [[self fakeLocationBar] setBackgroundColor:fg];
+        }
+        if ([arg isKindOfClass: buttonClass] && needNewVisEff) {
             for (id sv in [arg subviews]) {
                 if ([sv isKindOfClass: visEffViewClass]) {
                     visEff = sv;
-                    [effectViews removeAllObjects];
+                    needNewVisEff = false;
                     for (id ssv in [sv subviews]) {
                         if (!isContentView(ssv)) {
                             [effectViews addObject:ssv];
@@ -328,6 +346,13 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
                 }
             }
         }   
+    }
+    
+    - (void)setFakeLocationBarHeightConstraint:(id)arg {
+        %orig;
+        if (fakeLocBarH == nil) {
+            fakeLocBarH = arg;
+        }
     }
 %end    
     
@@ -555,6 +580,12 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
     -(void)setIncognito:(BOOL)arg {
         %orig(YES);
     }
+%end
+    
+%hook OmniboxViewController
+    - (id)initWithIncognito:(BOOL)arg {
+        return %orig(true);
+    }   
 %end
     
     //  STATUSBAR
