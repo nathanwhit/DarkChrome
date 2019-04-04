@@ -1,4 +1,4 @@
-#define INSPECT 1
+#define INSPECT 0
 
 
 #include <os/log.h>
@@ -10,8 +10,8 @@
 #if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    // watchClass(%c(GridViewController));
-    watchSelector(@selector(setSelectedItemID:));
+    // watchClass(%c(ContentSuggestionHeaderView));
+    // watchSelector(@selector(setSelectedItemID:));
 }
 #endif
 
@@ -319,7 +319,7 @@ static Class buttonClass = %c(UIButton);
 }
 @end
 
-static NSString* activeTabID = @"";
+static NSString* activeTabID = nil;
 static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
 
 static BOOL isContentView(id v) {
@@ -340,22 +340,42 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
 }
 
 %hook GridViewController
-    - (void)setSelectedItemID:(NSString*)itemID {
-        if ([self selectedItemID]) {
-            if (!fakeLocBars[itemID]) {
-                fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
-            }
-            else {
-                [fakeLocBars[itemID] needsReInit];
-            }
-        }
-        
+    - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)itemID {
         %orig;
+        itemID = [item identifier];
         if (!fakeLocBars[itemID]) {
             fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
         }
+    }
+    - (void)setSelectedItemID:(NSString*)itemID {
+        if (!itemID) {
+            %orig;
+            return;
+        }
+        if (!activeTabID) {
+            activeTabID = [[NSString alloc] initWithString:itemID];
+        }
+        %orig;
+        if (!fakeLocBars[activeTabID]) {
+            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
+        }
+        
+        // if (!fakeLocBars[itemID]) {
+//             fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
+//         }
+        // if (activeTabID) {
+        // }
+        else {
+            [fakeLocBars[activeTabID] needsReInit];
+        }
         activeTabID = [[NSString alloc] initWithString:itemID];   
     }
+    - (void)removeItemWithID:(NSString*)itemID selectedItemID:(NSString*)selectedID {
+        [fakeLocBars removeObjectForKey:itemID];
+        activeTabID = nil;
+        %orig;
+    }
+    
 %end
 
 %hook ContentSuggestionsHeaderView
@@ -364,25 +384,27 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
-        [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
-        if ([fakeLocBars[activeTabID] heightConstraint] != nil) {
-            [fakeLocBars[activeTabID] setOldHeight:[[self fakeLocationBarHeightConstraint] constant]];
-        }
-        if ([self fakeLocationBar] != nil) {
-            [[self fakeLocationBar] setBackgroundColor:fg];
-            // watchObject([self fakeLocationBar]);
-        }
-        if ([arg isKindOfClass: buttonClass] && [fakeLocBars[activeTabID] needsInitialization]) {
-            for (id sv in [arg subviews]) {
-                if ([sv isKindOfClass: visEffViewClass]) {
-                    [fakeLocBars[activeTabID] setMainVisualEffect:sv];
-                    [fakeLocBars[activeTabID] setNeedsInitialization: false];
-                    for (id ssv in [sv subviews]) {
-                        if (!isContentView(ssv)) {
-                            [[fakeLocBars[activeTabID] effectViews] addObject:ssv];
+        if (activeTabID) {
+            [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
+            if ([fakeLocBars[activeTabID] heightConstraint] != nil) {
+                [fakeLocBars[activeTabID] setOldHeight:[[self fakeLocationBarHeightConstraint] constant]];
+            }
+            if ([self fakeLocationBar] != nil) {
+                [[self fakeLocationBar] setBackgroundColor:fg];
+                // watchObject([self fakeLocationBar]);
+            }
+            if ([arg isKindOfClass: buttonClass] && [fakeLocBars[activeTabID] needsInitialization]) {
+                for (id sv in [arg subviews]) {
+                    if ([sv isKindOfClass: visEffViewClass]) {
+                        [fakeLocBars[activeTabID] setMainVisualEffect:sv];
+                        [fakeLocBars[activeTabID] setNeedsInitialization: false];
+                        for (id ssv in [sv subviews]) {
+                            if (!isContentView(ssv)) {
+                                [[fakeLocBars[activeTabID] effectViews] addObject:ssv];
+                            }
                         }
+                        hideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
                     }
-                    hideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
                 }
             }
         }   
