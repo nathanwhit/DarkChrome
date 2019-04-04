@@ -319,7 +319,7 @@ static Class buttonClass = %c(UIButton);
 }
 @end
 
-static NSString* activeTabID = nil;
+static NSString* activeTabID = @"";
 static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
 
 static BOOL isContentView(id v) {
@@ -342,7 +342,12 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
 %hook GridViewController
     - (void)setSelectedItemID:(NSString*)itemID {
         if ([self selectedItemID]) {
-            [fakeLocBars[itemID] needsReInit];
+            if (!fakeLocBars[itemID]) {
+                fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
+            }
+            else {
+                [fakeLocBars[itemID] needsReInit];
+            }
         }
         
         %orig;
