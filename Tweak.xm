@@ -4,8 +4,8 @@
 #include <os/log.h>
 #include "privateHeaders.h"
 
-// #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
-// #define log(str) os_log(OS_LOG_DEFAULT, "%", str)
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+#define log(str) os_log(OS_LOG_DEFAULT, "%", str)
 
 #if INSPECT==1
 #include "InspCWrapper.m"
@@ -341,25 +341,29 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
 
 %hook GridViewController
     - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)itemID {
-        %orig;
         itemID = [item identifier];
         if (!fakeLocBars[itemID]) {
             fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
         }
+        %orig;
+        
     }
     - (void)setSelectedItemID:(NSString*)itemID {
         if (!itemID) {
             %orig;
             return;
         }
+        bool beenSet = false;
         if (!activeTabID) {
             activeTabID = [[NSString alloc] initWithString:itemID];
+            beenSet = true;
         }
-        %orig;
         if (!fakeLocBars[activeTabID]) {
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
-        
+        if (!beenSet) {
+            activeTabID = [[NSString alloc] initWithString:itemID];   
+        }
         // if (!fakeLocBars[itemID]) {
 //             fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
 //         }
@@ -368,7 +372,8 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         else {
             [fakeLocBars[activeTabID] needsReInit];
         }
-        activeTabID = [[NSString alloc] initWithString:itemID];   
+        %orig;
+        
     }
     - (void)removeItemWithID:(NSString*)itemID selectedItemID:(NSString*)selectedID {
         [fakeLocBars removeObjectForKey:itemID];
@@ -385,15 +390,12 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
             [[self searchHintLabel] setTextColor:hint];
         }
         if (activeTabID) {
-            [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
-            if ([fakeLocBars[activeTabID] heightConstraint] != nil) {
-                [fakeLocBars[activeTabID] setOldHeight:[[self fakeLocationBarHeightConstraint] constant]];
+            if ([fakeLocBars[activeTabID] heightConstraint] == nil) {
+                [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
             }
-            if ([self fakeLocationBar] != nil) {
-                [[self fakeLocationBar] setBackgroundColor:fg];
-                // watchObject([self fakeLocationBar]);
-            }
-            if ([arg isKindOfClass: buttonClass] && [fakeLocBars[activeTabID] needsInitialization]) {
+            [fakeLocBars[activeTabID] setOldHeight:[[self fakeLocationBarHeightConstraint] constant]];
+            [[self fakeLocationBar] setBackgroundColor:fg];
+            if ([fakeLocBars[activeTabID] needsInitialization]) {
                 for (id sv in [arg subviews]) {
                     if ([sv isKindOfClass: visEffViewClass]) {
                         [fakeLocBars[activeTabID] setMainVisualEffect:sv];
@@ -407,7 +409,7 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
                     }
                 }
             }
-        }   
+        }
     }
     
     - (void)setFakeLocationBarHeightConstraint:(id)arg {
@@ -416,30 +418,26 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
             [fakeLocBars[activeTabID] setHeightConstraint: arg];
         }
     }
-%end  
     
-%hook NSLayoutConstraint
-    - (void)setConstant:(CGFloat)c {
-        %orig;
+    - (id)fakeLocationBarHeightConstraint {
+        NSLayoutConstraint* bh = %orig;
+        CGFloat c = [bh constant];
         if (c == [fakeLocBars[activeTabID] oldHeight]) {
-            return; 
+            return bh; 
         }
-        if (self == [fakeLocBars[activeTabID] heightConstraint]) {
-            if ([fakeLocBars[activeTabID] mainVisualEffect] != nil) {
-                if (c > [fakeLocBars[activeTabID] oldHeight]) {
-                    hideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
-                    [fakeLocBars[activeTabID] setOldHeight:c];
-                }
-                else if (c < [fakeLocBars[activeTabID] oldHeight]) {
-                    unhideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
-                    [fakeLocBars[activeTabID] setOldHeight:c];
-                }
+        if (![fakeLocBars[activeTabID] needsInitialization]) {
+            if (c > [fakeLocBars[activeTabID] oldHeight]) {
+                hideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
+                [fakeLocBars[activeTabID] setOldHeight:c];
+            }
+            else if (c < [fakeLocBars[activeTabID] oldHeight]) {
+                unhideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
+                [fakeLocBars[activeTabID] setOldHeight:c];
             }
         }
+        return bh;
     }
-%end 
-    
-
+%end      
  
  // NAVBARS/TOOLBARS IN MENUS (e.g. bookmarks, recent tabs)
     
