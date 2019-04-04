@@ -1,6 +1,11 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface GridViewController
+- (void)setSelectedItemID:(NSString*)itemID;
+- (NSString*)selectedItemID;
+@end
+
 @interface GridCell
 - (void)setTheme:(NSUInteger)arg;
 - (id)topBar;
