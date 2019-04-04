@@ -6,5 +6,5 @@ ssh '-T' '-p' "${THEOS_DEVICE_PORT}" "root@${THEOS_DEVICE_IP}" << EOF
     exit
 EOF
 
-rm -f "${local_log_dir}/*.log"
+find "${local_log_dir}" -name '*.log' -delete
 echo "All logs deleted"
