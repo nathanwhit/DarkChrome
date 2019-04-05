@@ -1,6 +1,9 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface OmniboxPopupTruncatingLabel : UILabel
+
+@end
 @interface GridViewController
 - (void)setSelectedItemID:(NSString*)itemID;
 - (NSString*)selectedItemID;
@@ -15,6 +18,16 @@
 - (void)setTheme:(NSUInteger)arg;
 - (id)topBar;
 - (void)updateTopBar;
+@end
+
+@interface TabModel
+- (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
+- (id)currentTab;
+- (void)browserStateDestroyed;
+@end
+
+@interface Tab
+- (NSString*)tabId;
 @end
 
 @interface UIImageView (cells)
