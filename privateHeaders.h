@@ -4,6 +4,11 @@
 @interface GridViewController
 - (void)setSelectedItemID:(NSString*)itemID;
 - (NSString*)selectedItemID;
+- (NSMutableArray*)items;
+@end
+
+@interface GridItem
+- (NSString*)identifier;
 @end
 
 @interface GridCell
@@ -131,6 +136,7 @@
 - (UIView*)fakeLocationBar;
 - (id)subviews;
 - (NSLayoutConstraint*)fakeLocationBarHeightConstraint;
+- (NSUInteger)hash;
 @end
 
 #endif

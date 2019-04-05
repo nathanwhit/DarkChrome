@@ -1,18 +1,21 @@
-#define INSPECT 0
+#define INSPECT 1
 
 
 #include <os/log.h>
 #include "privateHeaders.h"
+#include <math.h>
 
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
-#define log(str) os_log(OS_LOG_DEFAULT, "%", str)
+#define log(str) os_log(OS_LOG_DEFAULT, str)
 
 #if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
     // watchClass(%c(ContentSuggestionHeaderView));
-    // watchSelector(@selector(setSelectedItemID:));
     // watchSelector(@selector(updateFakeOmniboxForOffset:screenWidth:safeAreaInsets:));
+    // watchSelector(@selector(populateItems:selectedItemID:));
+    // setMaximumRelativeLoggingDepth(20);
+    watchClass(%c(GridViewController));
 }
 #endif
 
@@ -28,14 +31,16 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
-static Class gridCellClass = %c(GridCell);
+// static Class gridCellClass = %c(GridCell);
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
 static Class suggestCellClass = %c(ContentSuggestionsCell);
 static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
 static Class settingsTextCellClass = %c(SettingsTextCell);
-static Class visEffContentViewClass = %c(_UIVisualEffectContentView);
-static Class visEffViewClass = %c(UIVisualEffectView);
+static Class visContentViewClass = %c(_UIVisualEffectContentView);
+static Class visEffectViewClass = %c(UIVisualEffectView);
 static Class buttonClass = %c(UIButton);
+static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
+static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 // TAB OVERVIEW
 %hook GridCell
@@ -293,7 +298,7 @@ static Class buttonClass = %c(UIButton);
 %end
     
 @interface FakeLocationBar : NSObject
-    @property (assign) NSMutableArray<UIVisualEffectView*> *effectViews;
+    @property (assign) NSMutableArray *effectViews;
     @property (retain) NSLayoutConstraint *heightConstraint;
     // @property CGFloat oldHeight;
     @property bool needsInitialization;
@@ -325,16 +330,15 @@ static Class buttonClass = %c(UIButton);
 
 static NSString* activeTabID = nil;
 static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
-static NSMutableDictionary<NSString*, FakeLocationBar*> *barButtons = [[NSMutableDictionary alloc] init];
-static const CGFloat minBarHeight = 36;
-static const CGFloat maxBarHeight = 48;
+static NSMutableDictionary<NSNumber*, FakeLocationBar*> *barButtons = [[NSMutableDictionary alloc] init];
+// static const CGFloat minBarHeight = 36;
 
-static BOOL isContentView(id v) {
-    return [v isKindOfClass: visEffContentViewClass];
-}
+// static BOOL isContentView(id v) {
+//     return [v isKindOfClass: visContentViewClass];
+// }
 
 static void hideSubviews(FakeLocationBar* bar) {
-    log("Hiding");
+    // log("Hiding");
     [[bar mainVisualEffect] setBackgroundColor:clear];
     for (id vw in [bar effectViews]) {
         [vw setHidden:true];
@@ -342,7 +346,7 @@ static void hideSubviews(FakeLocationBar* bar) {
     [bar setEffectsHidden:true];
 }
 static void unhideSubviews(FakeLocationBar* bar) {
-    log("Unhiding");
+    // log("Unhiding");
     [[bar mainVisualEffect] setBackgroundColor:oldeff];
     for (id vw in [bar effectViews]) {
         [vw setHidden:false];
@@ -350,36 +354,59 @@ static void unhideSubviews(FakeLocationBar* bar) {
     [bar setEffectsHidden:false];
 }
 
+// %hook BrowserViewController
+//     - (void)dealloc {
+//         [fakeLocBars removeAllObjects];
+//         [barButtons removeAllObjects];
+//         activeTabID = nil;
+//     }
+// %end
+
+
 %hook GridViewController
+    - (void)populateItems:(id)items selectedItemID:(NSString*)itemID {
+        %orig;
+        activeTabID = itemID;
+        if (activeTabID && !fakeLocBars[activeTabID]) {
+            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
+        }
+    }
     - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)itemID {
-        itemID = [item identifier];
         if (!fakeLocBars[itemID]) {
             fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
         }
         %orig;
-        
+        itemID = [[[self items] objectAtIndex:index] identifier];
+        // NSString* itemID = [item itemIdentifier];
+        if (!fakeLocBars[itemID]) {
+            fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
+        }
+        activeTabID = itemID;
+    }
+    - (void)setItems:(id)items {
+        %orig;
+        for (id item in [self items]) {
+            if (item != nil && [item respondsToSelector:@selector(identifier)]) {
+                fakeLocBars[[item identifier]] = [[FakeLocationBar alloc] init];
+            }
+        }
     }
     - (void)setSelectedItemID:(NSString*)itemID {
-        if (!itemID) {
-            %orig;
+        %orig;
+        if (!itemID || [activeTabID isEqual:itemID]) {
             return;
         }
-        bool beenSet = false;
-        if (!activeTabID) {
-            activeTabID = [[NSString alloc] initWithString:itemID];
-            beenSet = true;
+        if (activeTabID == nil) {
+            activeTabID = itemID;
         }
-        if (!fakeLocBars[activeTabID]) {
+        if (fakeLocBars[activeTabID] == nil) {
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
-        if (!beenSet) {
-            activeTabID = [[NSString alloc] initWithString:itemID];   
-        }
-        %orig;   
+        activeTabID = itemID;
     }
     - (void)removeItemWithID:(NSString*)itemID selectedItemID:(NSString*)selectedID {
         [fakeLocBars removeObjectForKey:itemID];
-        activeTabID = nil;
+        activeTabID = selectedID;
         %orig;
     }
     
@@ -387,94 +414,97 @@ static void unhideSubviews(FakeLocationBar* bar) {
 
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
+        
         %orig;
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
-        if (activeTabID) {
-            if ([fakeLocBars[activeTabID] heightConstraint] == nil) {
-                [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
-            }
-            [[self fakeLocationBar] setBackgroundColor:fg];
-            if ([fakeLocBars[activeTabID] needsInitialization]) {
-                for (id sv in [arg subviews]) {
-                    if ([sv isKindOfClass: visEffViewClass]) {
-                        [fakeLocBars[activeTabID] setMainVisualEffect:sv];
-                        [fakeLocBars[activeTabID] setNeedsInitialization: false];
-                        NSString* ptr = [[NSString alloc] initWithFormat:@"%p", arg] ;
-                        log(ptr);
-                        barButtons[ptr] = fakeLocBars[activeTabID];
-                        for (id ssv in [sv subviews]) {
-                            if (!isContentView(ssv)) {
-                                [[fakeLocBars[activeTabID] effectViews] addObject:ssv];
-                            }
-                        }
-                        if (![fakeLocBars[activeTabID] effectsHidden]) {
-                            hideSubviews(fakeLocBars[activeTabID]);
-                        }
-                    }
-                }
-            }
+        if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
+            return;
         }
+        // if (activeTabID != nil) {
+            if ([fakeLocBars[activeTabID] needsInitialization]) {
+                [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
+                [[self fakeLocationBar] setBackgroundColor:fg];
+                // for (id sv in [arg subviews]) {
+                    // if ([sv isKindOfClass: visEffectViewClass]) {
+                id veff = [[arg subviews] objectAtIndex:0];
+                [fakeLocBars[activeTabID] setMainVisualEffect:veff];
+                barButtons[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
+                [veff setBackgroundColor:nil];
+                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
+                [[[veff subviews] objectAtIndex:0] setHidden:true];
+                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
+                [[[veff subviews] objectAtIndex:1] setHidden:true];
+                    // }
+                // }
+                // if (![fakeLocBars[activeTabID] effectsHidden]) {
+                // hideSubviews(fakeLocBars[activeTabID]);
+                // }
+                [fakeLocBars[activeTabID] setEffectsHidden: true];
+                [fakeLocBars[activeTabID] setNeedsInitialization: false];
+                        // return;
+                    // }
+                // }
+            }
+        // }
     }
     
     - (void)setFakeLocationBarHeightConstraint:(id)arg {
         %orig;
-        if ([fakeLocBars[activeTabID] heightConstraint] == nil) {
+        if (arg != nil && fakeLocBars[activeTabID] != nil && [fakeLocBars[activeTabID] needsInitialization]) {
             [fakeLocBars[activeTabID] setHeightConstraint: arg];
         }
     }
     
-    // - (id)fakeLocationBarHeightConstraint {
-//         NSLayoutConstraint* bh = %orig;
-//         // watchObject(bh);
-//         CGFloat c = [bh constant];
-//         if (c != [fakeLocBars[activeTabID] oldHeight] && c !=) {
-//             return bh;
-//         }
-//         if (![fakeLocBars[activeTabID] needsInitialization]) {
-//             if (c > [fakeLocBars[activeTabID] oldHeight]) {
-//                 hideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
-//                 [fakeLocBars[activeTabID] setOldHeight:c];
-//             }
-//             else if (c < [fakeLocBars[activeTabID] oldHeight]) {
-//                 unhideSubviews([fakeLocBars[activeTabID] mainVisualEffect], [fakeLocBars[activeTabID] effectViews]);
-//                 [fakeLocBars[activeTabID] setOldHeight:c];
-//             }
-//         }
-//         return bh;
-//     }
-    
-    - (void)updateSearchFieldWidth:(id)w height:(NSLayoutConstraint*)h topMargin:(id)top forOffset:(CGFloat)offset screenWidth:(CGFloat)screenWidth safeAreaInsets:(UIEdgeInsets)insets {
-        %orig;
-        CGFloat c = [[self fakeLocationBarHeightConstraint] constant];
-        logf("%.2f", c);
-        if ([fakeLocBars[activeTabID] needsInitialization] || (c != minBarHeight && c != maxBarHeight)) {
-            %orig;
-            return;
+    - (id)fakeLocationBarHeightConstraint {
+        NSLayoutConstraint* bh = %orig;
+        // watchObject(bh);
+        CGFloat c = [(NSLayoutConstraint*)bh constant];
+        CGFloat minDelt = fabs(36.0 - c);
+        if (activeTabID == nil || fakeLocBars[activeTabID] == nil || [fakeLocBars[activeTabID] needsInitialization]) {
+            return bh;
         }
-        if (c == minBarHeight && ![fakeLocBars[activeTabID] effectsHidden]) {
-            hideSubviews(fakeLocBars[activeTabID]);
-        }
-        else if (c == maxBarHeight && [fakeLocBars[activeTabID] effectsHidden]) {
+        if (minDelt <= 4 && [fakeLocBars[activeTabID] effectsHidden]) {
             unhideSubviews(fakeLocBars[activeTabID]);
         }
-}
+        else if (minDelt > 4 && ![fakeLocBars[activeTabID] effectsHidden]) {
+            hideSubviews(fakeLocBars[activeTabID]);
+        }
+        return bh;
+    }
     
+   //  - (void)updateSearchFieldWidth:(id)w height:(id)h topMargin:(id)top forOffset:offset screenWidth:screenWidth safeAreaInsets:insets {
+//         %orig;
+//         CGFloat c = [[fakeLocBars[activeTabID] heightConstraint] constant];
+//         logf("%.2f", c);
+//         CGFloat minDelt = fabs(36.0 - c);
+//         logf("%.2f", minDelt);
+//         if (activeTabID == nil || !fakeLocBars[activeTabID] || [fakeLocBars[activeTabID] needsInitialization]) {
+//             %orig;
+//             return;
+//         }
+//         if (minDelt <= 4 && [fakeLocBars[activeTabID] effectsHidden]) {
+//             unhideSubviews(fakeLocBars[activeTabID]);
+//         }
+//         else if (![fakeLocBars[activeTabID] effectsHidden]) {
+//             hideSubviews(fakeLocBars[activeTabID]);
+//         }
+// }
     
 %end    
     
-%hook UIButton
+%hook ContentSuggestionsHeaderView
     - (void)dealloc {
-        NSString* ptr = [[NSString alloc] initWithFormat:@"%p", self];
-        log(ptr);
-        if (barButtons[ptr]) {
-            [barButtons[ptr] needsReInit];
+        NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
+        if (barButtons[hsh]) {
+            [barButtons[hsh] needsReInit];
+            // log("Deallocated");
         }
         %orig;
     }
-  
 %end
+    
  
  // NAVBARS/TOOLBARS IN MENUS (e.g. bookmarks, recent tabs)
     
@@ -536,7 +566,7 @@ static void unhideSubviews(FakeLocationBar* bar) {
         %orig;
         id cont = [self contentContainer];
         for (id v in [cont subviews]) {
-            if ([v isKindOfClass:visEffViewClass]) {
+            if ([v isKindOfClass:visEffectViewClass]) {
                 [v setHidden:true];
             }
         }
