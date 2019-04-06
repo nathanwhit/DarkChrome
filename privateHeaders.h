@@ -1,9 +1,21 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
-@interface OmniboxPopupTruncatingLabel : UILabel
-
+@interface UITableView (bookmark_edit)
+- (id)_visibleHeaderFooterViews;
 @end
+@interface ClearBrowsingDataCollectionViewController
+- (id)collectionView;
+- (void)loadModel;
+@end
+@interface OmniboxPopupTruncatingLabel : UILabel
+@end
+
+@interface OmniboxPopupRow		
+- (id)detailTruncatingLabel;		
+- (id)textTruncatingLabel;		
+@end
+
 @interface GridViewController
 - (void)setSelectedItemID:(NSString*)itemID;
 - (NSString*)selectedItemID;
@@ -24,6 +36,8 @@
 - (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
 - (id)currentTab;
 - (void)browserStateDestroyed;
+- (NSUInteger)count;
+- (id)tabAtIndex:(NSUInteger)index;
 @end
 
 @interface Tab
@@ -99,6 +113,27 @@
 - (id)inkView;
 - (id)textLabel;
 - (id)detailTextLabel;
+@end
+
+@interface HistoryTableViewController
+- (id)tableView;
+@end
+
+@interface BookmarkEditViewController
+- (id)tableView;
+- (id)styler;
+@end
+
+@interface AutofillEditCell
+- (id)textLabel;
+@end
+
+@interface TableViewTextHeaderFooterView
+- (id)textLabel;
+@end
+
+@interface AutofillDataCell
+- (id)textLabel;
 @end
 
 @interface PopupMenuTableViewController
