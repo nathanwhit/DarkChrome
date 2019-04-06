@@ -1,4 +1,4 @@
-#define INSPECT 1
+#define INSPECT 0
 
 
 #include <os/log.h>
