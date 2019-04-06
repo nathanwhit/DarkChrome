@@ -1,12 +1,18 @@
-#define INSPECT 0
+#define INSPECT 1
+
 
 #include <os/log.h>
 #include "privateHeaders.h"
+#include <math.h>
+
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+#define log(str) os_log(OS_LOG_DEFAULT, str)
 
 #if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    watchClass(%c(OmniboxContainerView));
+    watchClass(%c(BookmarkEditViewController));
+    setMaximumRelativeLoggingDepth(10);
 }
 #endif
 
@@ -20,16 +26,23 @@ static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
+static UIColor * locBarColor = [UIColor colorWithWhite:1 alpha:0.12];
+static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
+static CGFloat locbar_viseffect_rgb = 0.98;
+static CGFloat locbar_viseffect_alph = 0.4;
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
-static Class gridCellClass = %c(GridCell);
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
 static Class suggestCellClass = %c(ContentSuggestionsCell);
 static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
 static Class settingsTextCellClass = %c(SettingsTextCell);
-static Class visEffContentViewClass = %c(_UIVisualEffectContentView);
-static Class visEffViewClass = %c(UIVisualEffectView);
+static Class visContentViewClass = %c(_UIVisualEffectContentView);
+static Class visEffectViewClass = %c(UIVisualEffectView);
 static Class buttonClass = %c(UIButton);
+static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
+static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
+
+static CGFloat locBarCornerRadius = 25;
 
 // TAB OVERVIEW
 %hook GridCell
@@ -110,6 +123,8 @@ static Class buttonClass = %c(UIButton);
         }   
     }
 %end
+    
+    
 
 //  SETTINGS->PAYMENT METHODS/ADDRESSES AND MORE   
     
@@ -129,21 +144,20 @@ static Class buttonClass = %c(UIButton);
 %end  
     
     //  SETTINGS -> PRIVACY -> CLEAR BROWSING DATA
-    
+
 %hook ClearBrowsingDataItem
     - (void)configureCell:(id)arg {
         %orig;
-        // watchObject(arg);
         [[arg textLabel] setTextColor:txt];
-        [[arg contentView] setBackgroundColor:fg];        
+        [[arg contentView] setBackgroundColor:fg];
     }
 %end
-    
+
 %hook ClearBrowsingDataCollectionViewController
-    - (id)initWithBrowserState:(id)arg {
-        id cont = %orig;
-        [[cont collectionView] setBackgroundColor:bg];
-        return cont;
+    - (void)loadModel {
+        %orig;
+        [[self collectionView] setBackgroundColor:bg];
+        log("Loading model");
     }
 %end
 
@@ -161,13 +175,13 @@ static Class buttonClass = %c(UIButton);
         }
     }
 %end
-            
+
 %hook TableViewURLCell
-  
+
     -(void)setBackgroundColor:(id)arg {
         %orig(fg);
     }
-    
+
     -(void)configureUILayout {
         %orig;
         UIStackView* stack = [self horizontalStack];
@@ -258,7 +272,6 @@ static Class buttonClass = %c(UIButton);
         if ([self respondsToSelector:@selector(_ui_superview)]) {
             id superview = [self _ui_superview];
             if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass] || [superview isKindOfClass:settingsTextCellClass]) {
-                
                 UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
                 [self setTintColor: fg];
                 if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
@@ -286,36 +299,117 @@ static Class buttonClass = %c(UIButton);
     }
 %end
     
-static UIVisualEffectView * visEff = nil;
-static CGFloat old = nil;
-static NSMutableArray* effectViews = [[NSMutableArray alloc] init];
-static NSLayoutConstraint* fakeLocBarH = nil;
-static BOOL needNewVisEff = true;
-static BOOL isContentView(id v) {
-    return [v isKindOfClass: visEffContentViewClass];
-}
+@interface FakeLocationBar : NSObject
+    @property (strong) NSMutableArray *effectViews;
+    @property (weak) NSLayoutConstraint *heightConstraint;
+    @property CGFloat oldHeight;
+    @property bool needsInitialization;
+    @property (weak) UIVisualEffectView *mainVisualEffect;
+    @property bool effectsHidden;
+    @property (weak) UIButton* fakeBox;
+    - (id)init;
+    - (void)needsReInit;
+@end
 
-static void hideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
-    [eff setBackgroundColor:clear];
-    for (id vw in subs) {
-        [vw setHidden:true];
-    }
+@implementation FakeLocationBar
+- (id)init {
+    self.effectViews = [[NSMutableArray alloc] init];
+    self.heightConstraint = nil;
+    self.oldHeight = -1;
+    self.needsInitialization = true;
+    self.mainVisualEffect = nil;
+    self.effectsHidden = false;
+    self.fakeBox = nil;
+    return self;
 }
-static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
-    [eff setBackgroundColor:oldeff];
-    for (id vw in subs) {
-        [vw setHidden:false];
-    }
+- (void)needsReInit {
+    [[self effectViews] removeAllObjects];
+    self.heightConstraint = nil;
+    self.oldHeight = -1;
+    self.needsInitialization = true;
+    self.mainVisualEffect = nil;
+    self.effectsHidden = false;
+    self.fakeBox = nil;
 }
+@end
 
-%hook UIVisualEffectView
-    - (void)dealloc {
-        if (self == visEff) {
-            visEff = nil;
-            [effectViews removeAllObjects];
-            needNewVisEff = true;
+static NSString* activeTabID = nil;
+static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
+static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
+// static const CGFloat minBarHeight = 36;
+
+%hook GridViewController
+    - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)arg {
+        %orig;
+        if ([item respondsToSelector:@selector(identifier)]) {
+            NSString* itemID = [item identifier];
+            if (itemID && !fakeLocBars[itemID]) {
+                fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
+            }
+        }
+    }
+    - (void)setSelectedItemID:(NSString*)itemID {
+        %orig;
+        if (!itemID) {
+            return;
+        }
+        if (activeTabID == nil) {
+            activeTabID = itemID;
+        }
+        if (!fakeLocBars[itemID]) {
+            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
+        }
+        activeTabID = itemID;
+    }
+    - (void)removeItemWithID:(NSString*)itemID selectedItemID:(NSString*)selectedID {
+        [fakeLocBars removeObjectForKey:itemID];
+        activeTabID = selectedID;
+        %orig;
+    }
+    
+%end
+        
+%hook TabModel
+    - (void)setCurrentTab:(id)tab {
+        %orig;
+        if ([self currentTab] != nil) {
+            activeTabID = [[self currentTab] tabId];
+            if (!fakeLocBars[activeTabID]) {
+                fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
+            }
+            else {
+                [fakeLocBars[activeTabID] needsReInit];
+            }
+        }
+    }
+    - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
+        BOOL ret = %orig;
+        if ([self currentTab] != nil && [[self currentTab] tabId] != nil) {
+            activeTabID = [[self currentTab] tabId];
+            if (fakeLocBars == nil) {
+                fakeLocBars = [[NSMutableDictionary alloc] init];
+            }
+            for (NSUInteger i = 0; i < [self count]; i++) {
+                fakeLocBars[[[self tabAtIndex:i] tabId]] = [[FakeLocationBar alloc] init];
+            }
+        }
+        return ret;
+    }
+    - (void)browserStateDestroyed {
+        for (NSString* tabID in fakeLocBars) {
+            if (fakeLocBars[tabID] != nil) {
+                [fakeLocBars[tabID] needsReInit];
+            }
         }
         %orig;
+    }
+    - (void)applicationDidEnterBackground {
+        %orig;
+        for (NSString* tabID in fakeLocBars) {
+            if (fakeLocBars[tabID] != nil) {
+                [fakeLocBars[tabID] needsReInit];
+            }
+        }
     }
 %end
 
@@ -325,59 +419,111 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
-        fakeLocBarH = [self fakeLocationBarHeightConstraint];
-        if (fakeLocBarH != nil) {
-            old = [[self fakeLocationBarHeightConstraint] constant];
+        if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
+            return;
         }
-        if ([self fakeLocationBar] != nil) {
-            [[self fakeLocationBar] setBackgroundColor:fg];
+        if ([fakeLocBars[activeTabID] needsInitialization]) {
+            [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
+            [[self fakeLocationBar] setBackgroundColor:locBarColor];
+            [fakeLocBars[activeTabID] setFakeBox:arg];
+            id veff = [[arg subviews] objectAtIndex:0];
+            [fakeLocBars[activeTabID] setMainVisualEffect:veff];
+            headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
+            [veff setBackgroundColor:oldeff];
+            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
+            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
+            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            [[veff layer] setCornerRadius:locBarCornerRadius];
+            [[sub1 layer] setCornerRadius:locBarCornerRadius];
+            [[sub2 layer] setCornerRadius:locBarCornerRadius];
+            [fakeLocBars[activeTabID] setNeedsInitialization: false];
         }
-        if ([arg isKindOfClass: buttonClass] && needNewVisEff) {
-            for (id sv in [arg subviews]) {
-                if ([sv isKindOfClass: visEffViewClass]) {
-                    visEff = sv;
-                    needNewVisEff = false;
-                    for (id ssv in [sv subviews]) {
-                        if (!isContentView(ssv)) {
-                            [effectViews addObject:ssv];
-                        }
-                    }
-                    hideSubviews(visEff, effectViews);
-                }
-            }
-        }   
+    }
+    
+    - (void)setFakeboxHighlighted:(BOOL)highlighted {
+        %orig;
+        [[self fakeLocationBar] setBackgroundColor: fg];
     }
     
     - (void)setFakeLocationBarHeightConstraint:(id)arg {
         %orig;
-        if (fakeLocBarH == nil) {
-            fakeLocBarH = arg;
+        if (arg != nil && fakeLocBars[activeTabID] != nil) {
+            [fakeLocBars[activeTabID] setHeightConstraint: arg];
         }
     }
+    
+    - (id)fakeLocationBarHeightConstraint {
+        NSLayoutConstraint* bh = %orig;
+        CGFloat c = [(NSLayoutConstraint*)bh constant];
+        CGFloat minDelt = fabs(36.0 - c);
+        if (activeTabID == nil || [[self subviews] count] < 3 || [fakeLocBars[activeTabID] needsInitialization]) {
+            return bh;
+        }
+        if (!fakeLocBars[activeTabID]) {
+            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
+        }        
+        if ([fakeLocBars[activeTabID] needsInitialization]) {
+
+            UIButton* button = [[self subviews] objectAtIndex:3];
+            [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
+            [[self fakeLocationBar] setBackgroundColor:locBarColor];
+            [fakeLocBars[activeTabID] setFakeBox:button];
+            id veff = [[button subviews] objectAtIndex:0];
+            [fakeLocBars[activeTabID] setMainVisualEffect:veff];
+            headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
+            [veff setBackgroundColor:oldeff];
+            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
+            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
+            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            [[veff layer] setCornerRadius:locBarCornerRadius];
+            [[sub1 layer] setCornerRadius:locBarCornerRadius];
+            [[sub2 layer] setCornerRadius:locBarCornerRadius];
+            [fakeLocBars[activeTabID] setNeedsInitialization: false];
+        }
+        
+        CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
+        [fakeLocBars[activeTabID] setOldHeight: c];
+        if (minDelt <= 10 && delta < 0) {
+            CGFloat radiusDelta = (minDelt/12)*locBarCornerRadius;
+            UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
+            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            [[main layer] setCornerRadius:radiusDelta];
+            [[sub1 layer] setCornerRadius:radiusDelta];
+            [[sub2 layer] setCornerRadius:radiusDelta];
+            [main setBackgroundColor:oldeff];
+            CGFloat alph = ((12-minDelt)/12)*locbar_viseffect_alph;
+            [main setBackgroundColor: [UIColor colorWithRed:locbar_viseffect_rgb green:locbar_viseffect_rgb blue:locbar_viseffect_rgb alpha:alph]];
+        }
+        else if (delta > 0) {
+            CGFloat radiusDelta = (minDelt/12)*locBarCornerRadius;
+            UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
+            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            CGFloat alph = ((12-minDelt)/12)*locbar_viseffect_alph;
+            [main setBackgroundColor: [UIColor colorWithRed:locbar_viseffect_rgb green:locbar_viseffect_rgb blue:locbar_viseffect_rgb alpha:alph]];
+            [[main layer] setCornerRadius:radiusDelta];
+            [[sub1 layer] setCornerRadius:radiusDelta];
+            [[sub2 layer] setCornerRadius:radiusDelta];
+        }
+        return bh;
+    }
+    
 %end    
     
-%hook NSLayoutConstraint
-    - (void)setConstant:(CGFloat)c {
+%hook ContentSuggestionsHeaderView
+    - (void)dealloc {
+        NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
+        if (headerViews[hsh]) {
+            [headerViews[hsh] needsReInit];
+            [headerViews removeObjectForKey:hsh];
+        }
         %orig;
-        if (c == old) {
-            return; 
-        }
-        if (self == fakeLocBarH) {
-            if (visEff != nil) {
-                if (c > old) {
-                    hideSubviews(visEff, effectViews);
-                    old = c;
-                }
-                else if (c < old) {
-                    unhideSubviews(visEff, effectViews);
-                    old = c;
-                }
-            }
-        }
     }
-%end 
+%end
     
-
  
  // NAVBARS/TOOLBARS IN MENUS (e.g. bookmarks, recent tabs)
     
@@ -429,7 +575,6 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
     - (id)init {
         id cont = %orig;
         [[cont tableView] setBackgroundColor: fg];
-        // [[cont styler] setCellSeparatorColor: sep];
         return cont;
     }    
 %end
@@ -439,7 +584,7 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
         %orig;
         id cont = [self contentContainer];
         for (id v in [cont subviews]) {
-            if ([v isKindOfClass:visEffViewClass]) {
+            if ([v isKindOfClass:visEffectViewClass]) {
                 [v setHidden:true];
             }
         }
@@ -456,9 +601,14 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
 %end
     
 %hook BookmarkEditViewController
-    - (void)viewWillAppear:(BOOL)arg {
+    - (void)updateUIFromBookmark {
         %orig;
-        [[self tableView] setBackgroundColor:bg];
+        [[self tableView] setBackgroundColor:fg];
+        [[[self tableView] footerViewForSection:0] setHidden:true];
+    }
+    - (void)viewDidLayoutSubviews {
+        %orig;
+        [[[self tableView] footerViewForSection:0] setHidden:true];
     }
 %end
     
@@ -585,7 +735,32 @@ static void unhideSubviews(UIVisualEffectView* eff, NSMutableArray* subs) {
 %hook OmniboxViewController
     - (id)initWithIncognito:(BOOL)arg {
         return %orig(true);
-    }   
+    }
+%end
+    
+    
+%hook OmniboxPopupPresenter 
+    - (id)initWithPopupPositioner:(id)arg1 popupViewController:(id)arg2 incognito:(BOOL)arg3 {
+        return %orig(arg1, arg2, true);
+    }
+    
+%end
+    
+%hook OmniboxPopupViewController
+    - (void)setIncognito:(BOOL)arg {
+        %orig(true);
+    }
+%end
+    
+%hook OmniboxPopupRow
+    -(void)initWithIncognito:(BOOL)incog {
+        %orig(true);
+    }
+    - (void)layoutAccessoryViews {
+        %orig;
+        [[self textTruncatingLabel] setTextColor: white];
+        [[self detailTruncatingLabel] setTextColor: detail];
+    }
 %end
     
     //  STATUSBAR
