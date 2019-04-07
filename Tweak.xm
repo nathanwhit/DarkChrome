@@ -4,23 +4,65 @@
 #include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
+#include <Cephei/HBPreferences.h>
 
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 #define log(str) os_log(OS_LOG_DEFAULT, str)
 
 #if INSPECT==1
 #include "InspCWrapper.m"
-%ctor {
-    watchClass(%c(BookmarkEditViewController));
-    setMaximumRelativeLoggingDepth(10);
-}
 #endif
 
+
+
+
+HBPreferences *preferences;
+UIColor * bg;
+UIColor * fg;
+UIColor * altfg;
+UIColor * sep;
+
+%ctor {
+    UIColor* dark_color1 = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha: 1];
+    UIColor* dark_color2 = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha: 1];
+    UIColor* dark_color3 = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
+    UIColor* clear = [UIColor colorWithWhite:0 alpha:0];
+    UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
+    UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
+
+    NSDictionary *darkScheme = @{
+        @"background" : dark_color1,
+        @"foreground" : dark_color2,
+        @"altforeground" : dark_color2,
+        @"separ" : dark_color3
+    };
+
+    NSDictionary *flatDarkScheme = @{
+        @"background" : dark_color1,
+        @"foreground" : dark_color1,
+        @"altforeground" : dark_color2,
+        @"separ" : clear
+    };
+
+    NSDictionary *trueBlackScheme = @{
+        @"background" : black_color1,
+        @"foreground" : black_color1,
+        @"altforeground" : black_color2,
+        @"separ" : clear
+    };
+    preferences = [[HBPreferences alloc] initWithIdentifier:@"com.nwhit.darkchromeprefs"];    
+    NSString* chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
+    os_log(OS_LOG_DEFAULT, "%{public}@", chosenScheme);
+    NSDictionary* schemeForString = @{@"dark" : darkScheme, @"flatDark" : flatDarkScheme, @"trueBlack" : trueBlackScheme};
+    bg = [[[schemeForString objectForKey:chosenScheme] objectForKey:@"background"] copy];
+    os_log(OS_LOG_DEFAULT, "%{public}p", schemeForString[chosenScheme]);
+    fg = [[schemeForString[chosenScheme] objectForKey:@"foreground"] copy];
+    altfg = [[schemeForString[chosenScheme] objectForKey:@"altforeground"] copy];
+    sep = [[schemeForString[chosenScheme] objectForKey:@"separ"] copy];
+}
+
 // COLORS
-static UIColor * bg = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha:1];
-static UIColor * fg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
 static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
-static UIColor * sep = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
 static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
@@ -43,6 +85,13 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
+
+// INCOGNITO
+%hook IncognitoView
+    - (void)setBackgroundColor:(id)arg {
+        %orig(bg);
+    }
+%end
 
 // TAB OVERVIEW
 %hook GridCell
@@ -217,7 +266,7 @@ static CGFloat locBarCornerRadius = 25;
         [[tile titleLabel] setTextColor:white];
         id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-        [imgView setTintColor: fg];
+        [imgView setTintColor: altfg];
         return tile;
     }
 %end
@@ -228,7 +277,7 @@ static CGFloat locBarCornerRadius = 25;
         [[tile titleLabel] setTextColor:white];
         id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-        [imgView setTintColor: fg];
+        [imgView setTintColor: altfg];
         return tile;
     }
 %end
@@ -271,7 +320,16 @@ static CGFloat locBarCornerRadius = 25;
     - (void)setImage:(id)arg {
         if ([self respondsToSelector:@selector(_ui_superview)]) {
             id superview = [self _ui_superview];
-            if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass] || [superview isKindOfClass:settingsTextCellClass]) {
+            if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
+                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+                [self setTintColor: altfg];
+                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:altfg]) {
+                    [self setBackgroundColor:altfg];
+                    [self setTintColor: altfg];
+                }
+                [[superview contentView] setBackgroundColor:nil];
+                %orig(img);
+            } else if ([superview isKindOfClass:settingsTextCellClass]){
                 UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
                 [self setTintColor: fg];
                 if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
@@ -280,7 +338,8 @@ static CGFloat locBarCornerRadius = 25;
                 }
                 [[superview contentView] setBackgroundColor:nil];
                 %orig(img);
-            } else {
+            }
+            else {
                 %orig;
             }
         }
@@ -338,6 +397,18 @@ static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutab
 static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
 // static const CGFloat minBarHeight = 36;
 
+%hook TabGridViewController
+    -(void)setView:(id)arg {
+        %orig;
+        [arg setBackgroundColor:bg];
+    }
+    -(void)setupRegularTabsViewController {
+        %orig;
+        [[self view] setBackgroundColor:bg];
+        
+    }
+%end
+
 %hook GridViewController
     - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)arg {
         %orig;
@@ -348,6 +419,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             }
         }
     }
+    
     - (void)setSelectedItemID:(NSString*)itemID {
         %orig;
         if (!itemID) {
@@ -366,7 +438,12 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         activeTabID = selectedID;
         %orig;
     }
-    
+    - (void)setCollectionView:(id)v {
+        if ([v respondsToSelector:@selector(backgroundView)]) {
+            [[v backgroundView] setBackgroundColor:bg];
+        }
+        %orig;
+    } 
 %end
         
 %hook TabModel
@@ -443,7 +520,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
     - (void)setFakeboxHighlighted:(BOOL)highlighted {
         %orig;
-        [[self fakeLocationBar] setBackgroundColor: fg];
+        [[self fakeLocationBar] setBackgroundColor: [UIColor colorWithWhite:0.2 alpha:1]];
     }
     
     - (void)setFakeLocationBarHeightConstraint:(id)arg {

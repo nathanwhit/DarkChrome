@@ -13,13 +13,15 @@
 
 @interface OmniboxPopupRow		
 - (id)detailTruncatingLabel;		
-- (id)textTruncatingLabel;		
+- (id)textTruncatingLabel;	
 @end
+
 
 @interface GridViewController
 - (void)setSelectedItemID:(NSString*)itemID;
 - (NSString*)selectedItemID;
 - (NSMutableArray*)items;
+- (UIView*)view;
 @end
 
 @interface GridItem
@@ -30,6 +32,11 @@
 - (void)setTheme:(NSUInteger)arg;
 - (id)topBar;
 - (void)updateTopBar;
+@end
+
+@interface TabGridViewController
+- (id)view;
+
 @end
 
 @interface TabModel
@@ -122,6 +129,7 @@
 @interface BookmarkEditViewController
 - (id)tableView;
 - (id)styler;
+- (id)initWithBookmark:(const struct BookmarkNode *)arg1 browserState:(struct ChromeBrowserState *)arg2;
 @end
 
 @interface AutofillEditCell
