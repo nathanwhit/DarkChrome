@@ -1,4 +1,4 @@
-#define INSPECT 0
+#define INSPECT 1
 
 
 #include <os/log.h>
@@ -11,15 +11,15 @@
 #if INSPECT==1
 #include "InspCWrapper.m"
 %ctor {
-    watchClass(%c(BookmarkEditViewController));
+    watchClass(%c(UICollectionView));
     setMaximumRelativeLoggingDepth(10);
 }
 #endif
 
 // COLORS
-static UIColor * bg = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha:1];
+static UIColor * bg = [UIColor colorWithWhite:0 alpha:1];
 static UIColor * fg = bg;
-static UIColor * oldfg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
+static UIColor * altfg = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
 static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
 static UIColor * sep = clear;
@@ -44,6 +44,13 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
+
+// INCOGNITO
+%hook IncognitoView
+    - (void)setBackgroundColor:(id)arg {
+        %orig(bg);
+    }
+%end
 
 // TAB OVERVIEW
 %hook GridCell
@@ -218,7 +225,7 @@ static CGFloat locBarCornerRadius = 25;
         [[tile titleLabel] setTextColor:white];
         id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-        [imgView setTintColor: oldfg];
+        [imgView setTintColor: altfg];
         return tile;
     }
 %end
@@ -229,7 +236,7 @@ static CGFloat locBarCornerRadius = 25;
         [[tile titleLabel] setTextColor:white];
         id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-        [imgView setTintColor: oldfg];
+        [imgView setTintColor: altfg];
         return tile;
     }
 %end
@@ -274,10 +281,10 @@ static CGFloat locBarCornerRadius = 25;
             id superview = [self _ui_superview];
             if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
                 UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-                [self setTintColor: oldfg];
-                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:oldfg]) {
-                    [self setBackgroundColor:oldfg];
-                    [self setTintColor: oldfg];
+                [self setTintColor: altfg];
+                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:altfg]) {
+                    [self setBackgroundColor:altfg];
+                    [self setTintColor: altfg];
                 }
                 [[superview contentView] setBackgroundColor:nil];
                 %orig(img);
@@ -349,6 +356,18 @@ static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutab
 static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
 // static const CGFloat minBarHeight = 36;
 
+%hook TabGridViewController
+    -(void)setView:(id)arg {
+        %orig;
+        [arg setBackgroundColor:bg];
+    }
+    -(void)setupRegularTabsViewController {
+        %orig;
+        [[self view] setBackgroundColor:bg];
+        
+    }
+%end
+
 %hook GridViewController
     - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)arg {
         %orig;
@@ -359,6 +378,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             }
         }
     }
+    
     - (void)setSelectedItemID:(NSString*)itemID {
         %orig;
         if (!itemID) {
@@ -377,7 +397,12 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         activeTabID = selectedID;
         %orig;
     }
-    
+    - (void)setCollectionView:(id)v {
+        if ([v respondsToSelector:@selector(backgroundView)]) {
+            [[v backgroundView] setBackgroundColor:bg];
+        }
+        %orig;
+    } 
 %end
         
 %hook TabModel
