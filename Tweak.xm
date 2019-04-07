@@ -18,10 +18,11 @@
 
 // COLORS
 static UIColor * bg = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha:1];
-static UIColor * fg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
+static UIColor * fg = bg;
+static UIColor * oldfg = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1];
 static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
-static UIColor * sep = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
+static UIColor * sep = clear;
 static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
@@ -217,7 +218,7 @@ static CGFloat locBarCornerRadius = 25;
         [[tile titleLabel] setTextColor:white];
         id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-        [imgView setTintColor: fg];
+        [imgView setTintColor: oldfg];
         return tile;
     }
 %end
@@ -228,7 +229,7 @@ static CGFloat locBarCornerRadius = 25;
         [[tile titleLabel] setTextColor:white];
         id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-        [imgView setTintColor: fg];
+        [imgView setTintColor: oldfg];
         return tile;
     }
 %end
@@ -271,7 +272,16 @@ static CGFloat locBarCornerRadius = 25;
     - (void)setImage:(id)arg {
         if ([self respondsToSelector:@selector(_ui_superview)]) {
             id superview = [self _ui_superview];
-            if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass] || [superview isKindOfClass:settingsTextCellClass]) {
+            if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
+                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+                [self setTintColor: oldfg];
+                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:oldfg]) {
+                    [self setBackgroundColor:oldfg];
+                    [self setTintColor: oldfg];
+                }
+                [[superview contentView] setBackgroundColor:nil];
+                %orig(img);
+            } else if ([superview isKindOfClass:settingsTextCellClass]){
                 UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
                 [self setTintColor: fg];
                 if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
@@ -280,7 +290,8 @@ static CGFloat locBarCornerRadius = 25;
                 }
                 [[superview contentView] setBackgroundColor:nil];
                 %orig(img);
-            } else {
+            }
+            else {
                 %orig;
             }
         }
@@ -443,7 +454,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
     - (void)setFakeboxHighlighted:(BOOL)highlighted {
         %orig;
-        [[self fakeLocationBar] setBackgroundColor: fg];
+        [[self fakeLocationBar] setBackgroundColor: [UIColor colorWithWhite:0.2 alpha:1]];
     }
     
     - (void)setFakeLocationBarHeightConstraint:(id)arg {
