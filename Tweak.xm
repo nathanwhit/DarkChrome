@@ -4,7 +4,6 @@
 #include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
-#include <Cephei/HBPreferences.h>
 
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 #define log(str) os_log(OS_LOG_DEFAULT, str)
@@ -15,14 +14,17 @@
 
 
 
-
-HBPreferences *preferences;
+NSDictionary *preferences;
+NSString* chosenScheme;
 UIColor * bg;
 UIColor * fg;
 UIColor * altfg;
 UIColor * sep;
 
 %ctor {
+    NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
+    NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
+    preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
     UIColor* dark_color1 = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha: 1];
     UIColor* dark_color2 = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha: 1];
     UIColor* dark_color3 = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
@@ -50,9 +52,9 @@ UIColor * sep;
         @"altforeground" : black_color2,
         @"separ" : clear
     };
-    preferences = [[HBPreferences alloc] initWithIdentifier:@"com.nwhit.darkchromeprefs"];    
-    NSString* chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
+    chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
     os_log(OS_LOG_DEFAULT, "%{public}@", chosenScheme);
+    
     NSDictionary* schemeForString = @{@"dark" : darkScheme, @"flatDark" : flatDarkScheme, @"trueBlack" : trueBlackScheme};
     bg = [[[schemeForString objectForKey:chosenScheme] objectForKey:@"background"] copy];
     os_log(OS_LOG_DEFAULT, "%{public}p", schemeForString[chosenScheme]);
