@@ -94,6 +94,32 @@ static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
 
+// KEYBOARD
+
+%hook OmniboxTextFieldIOS
+    - (id)initWithFrame:(CGRect)arg1 textColor:(id)arg2 tintColor:(id)arg3 {
+        id ret = %orig;
+        if ([ret respondsToSelector: @selector(setKeyboardAppearance:)]) {
+            [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
+        }
+        return ret;
+    }
+%end
+
+%hook UITextField
+    - (id)init {
+        id ret =  %orig;
+        [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
+        return ret;
+    }
+%end
+    
+        id ret =  %orig;
+        [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
+        return ret;
+    }
+%end
+    
 // INCOGNITO
 %hook IncognitoView
     - (void)setBackgroundColor:(id)arg {

@@ -1,6 +1,10 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface OmniboxTextFieldIOS : UITextField
+- (id)initWithFrame:(CGRect)arg1 textColor:(id)arg2 tintColor:(id)arg3;
+@end
+
 @interface UITableView (bookmark_edit)
 - (id)_visibleHeaderFooterViews;
 @end
