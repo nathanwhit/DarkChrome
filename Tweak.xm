@@ -477,8 +477,8 @@ static UIImage* handleSettingsCell(id cell, id image, id superview) {
 }
 @end
 
-static NSString* activeTabID = nil;
-static NSMutableDictionary<NSString*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
+static NSNumber* activeTabID = nil;
+static NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
 static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
 // static const CGFloat minBarHeight = 36;
 
@@ -493,49 +493,38 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         
     }
 %end
-
-%hook GridViewController
-    - (void)insertItem:(id)item atIndex:(NSUInteger)index selectedItemID:(NSString*)arg {
-        %orig;
-        if ([item respondsToSelector:@selector(identifier)]) {
-            NSString* itemID = [item identifier];
-            if (itemID && !fakeLocBars[itemID]) {
-                fakeLocBars[itemID] = [[FakeLocationBar alloc] init];
-            }
-        }
-    }
     
-    - (void)setSelectedItemID:(NSString*)itemID {
+%hook Tab
+    - (id)initWithWebState:(id)ws {
+        id tab = %orig;
+        NSNumber *t = @((NSInteger)tab);
+        if (!fakeLocBars[t]) {
+            fakeLocBars[t] = [[FakeLocationBar alloc] init];
+        }
+        else {
+            [fakeLocBars[t] needsReInit];
+        }
+        return tab;
+    }
+    - (void)webStateDestroyed:(id)ws {
+        id tab = (id)self;
+        NSNumber *t = @((NSInteger)tab);
+        if (fakeLocBars[t]) {
+            [fakeLocBars removeObjectForKey:t];
+        }
         %orig;
-        if (!itemID) {
+    }
+%end
+
+%hook BrowserViewController
+    - (void)displayTab:(id)tab {
+        if (incog) {
+            %orig;
             return;
         }
-        if (activeTabID == nil) {
-            activeTabID = itemID;
-        }
-        if (!fakeLocBars[itemID]) {
-            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
-        }
-        activeTabID = itemID;
-    }
-    - (void)removeItemWithID:(NSString*)itemID selectedItemID:(NSString*)selectedID {
-        [fakeLocBars removeObjectForKey:itemID];
-        activeTabID = selectedID;
-        %orig;
-    }
-    - (void)setCollectionView:(id)v {
-        if ([v respondsToSelector:@selector(backgroundView)]) {
-            [[v backgroundView] setBackgroundColor:bg];
-        }
-        %orig;
-    } 
-%end
-        
-%hook TabModel
-    - (void)setCurrentTab:(id)tab {
-        %orig;
-        if ([self currentTab] != nil) {
-            activeTabID = [[self currentTab] tabId];
+        NSNumber *t = @((NSInteger)tab);
+        if (tab != nil && ![t isEqual:activeTabID]) {
+            activeTabID = @((NSInteger)tab);
             if (!fakeLocBars[activeTabID]) {
                 fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             }
@@ -543,31 +532,27 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
                 [fakeLocBars[activeTabID] needsReInit];
             }
         }
+        %orig;
     }
+%end
+        
+%hook TabModel
     - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
         BOOL ret = %orig;
-        if ([self currentTab] != nil && [[self currentTab] tabId] != nil) {
-            activeTabID = [[self currentTab] tabId];
+        if ([self currentTab] != nil) {
+            activeTabID = @((NSInteger)[self currentTab]);
             if (fakeLocBars == nil) {
                 fakeLocBars = [[NSMutableDictionary alloc] init];
             }
-            for (NSUInteger i = 0; i < [self count]; i++) {
-                fakeLocBars[[[self tabAtIndex:i] tabId]] = [[FakeLocationBar alloc] init];
-            }
+        }
+        for (NSUInteger i = 0; i < [self count]; i++) {
+            fakeLocBars[@((NSInteger)[self tabAtIndex:i])] = [[FakeLocationBar alloc] init];
         }
         return ret;
     }
-    - (void)browserStateDestroyed {
-        for (NSString* tabID in fakeLocBars) {
-            if (fakeLocBars[tabID] != nil) {
-                [fakeLocBars[tabID] needsReInit];
-            }
-        }
-        %orig;
-    }
     - (void)applicationDidEnterBackground {
         %orig;
-        for (NSString* tabID in fakeLocBars) {
+        for (NSNumber* tabID in fakeLocBars) {
             if (fakeLocBars[tabID] != nil) {
                 [fakeLocBars[tabID] needsReInit];
             }
@@ -673,9 +658,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         return bh;
     }
     
-%end    
-    
-%hook ContentSuggestionsHeaderView
     - (void)dealloc {
         NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
         if (headerViews[hsh]) {
@@ -684,8 +666,8 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         }
         %orig;
     }
-%end
     
+%end    
  
  // NAVBARS/TOOLBARS IN MENUS (e.g. bookmarks, recent tabs)
     
