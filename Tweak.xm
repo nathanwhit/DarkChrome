@@ -1,4 +1,4 @@
-#define INSPECT 1
+#define INSPECT 0
 
 
 #include <os/log.h>
@@ -7,10 +7,6 @@
 
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 #define log(str) os_log(OS_LOG_DEFAULT, str)
-
-#if INSPECT==1
-#include "InspCWrapper.m"
-#endif
 
 NSDictionary *preferences;
 NSString* chosenScheme;
@@ -23,18 +19,22 @@ bool useIncognitoIndicator;
 
 bool incog = false;
 
+#if INSPECT == 1
+#include InspCWrapper.m
 static void startInspection() {
-    if (INSPECT == 1) {
-        watchClass(%c(MainController));
-        setMaximumRelativeLoggingDepth(25);
-    }
+    watchClass(%c(TabModel));
+    setMaximumRelativeLoggingDepth(25);
     return;
 }
+#endif
 
 
 
 %ctor {
+    #if INSPECT == 1
     startInspection();
+    #endif
+    
     
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
     if (@available(iOS 11, *)) {
