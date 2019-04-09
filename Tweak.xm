@@ -1,4 +1,4 @@
-#define INSPECT 0
+#define INSPECT 1
 
 
 #include <os/log.h>
@@ -12,8 +12,6 @@
 #include "InspCWrapper.m"
 #endif
 
-
-
 NSDictionary *preferences;
 NSString* chosenScheme;
 UIColor * bg;
@@ -21,8 +19,23 @@ UIColor * fg;
 UIColor * altfg;
 UIColor * sep;
 UIColor * blurColor;
+bool useIncognitoIndicator;
+
+bool incog = false;
+
+static void startInspection() {
+    if (INSPECT == 1) {
+        watchClass(%c(MainController));
+        setMaximumRelativeLoggingDepth(25);
+    }
+    return;
+}
+
+
 
 %ctor {
+    startInspection();
+    
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
     if (@available(iOS 11, *)) {
         NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];

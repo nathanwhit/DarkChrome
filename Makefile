@@ -5,7 +5,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = DarkChrome
 DarkChrome_FILES = Tweak.xm
 DarkChrome_FRAMEWORKS = UIKit Foundation
-DarkChrome_CFLAGS = -fobjc-arc
+DarkChrome_CFLAGS += -fobjc-arc
 export ARCHS = armv7 armv7s arm64
 # export SDKVERSION = 11.2
 DEBUG=0
