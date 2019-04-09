@@ -39,6 +39,12 @@ UIColor * blurColor;
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
     UIColor* black_color4 = [UIColor colorWithWhite:0.5 alpha: 0.5];
+    
+    if (!preferences[@"useIncognitoIndicator"] || ![preferences[@"useIncognitoIndicator"] boolValue]) {
+        useIncognitoIndicator = false;
+    } else {
+        useIncognitoIndicator = true;
+    }
 
     NSDictionary *darkScheme = @{
         @"background" : dark_color1,
@@ -865,6 +871,12 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %hook ToolbarButtonFactory
     -(id)initWithStyle:(NSInteger)arg {
+        if (arg == 1) {
+            incog = true;
+        }
+        else {
+            incog = false;
+        }
         return %orig(1);
     }
 %end
@@ -926,5 +938,15 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook BrowserViewController
     - (NSInteger)preferredStatusBarStyle {
         return UIStatusBarStyleLightContent;
+    }
+    
+    - (void)buildToolbarAndTabStrip {
+        %orig;
+        if (incog && useIncognitoIndicator) {
+            id buttonBackLayer = [[[[[[self secondaryToolbarCoordinator] viewController] view] omniboxButton] spotlightView] layer];
+            [buttonBackLayer setBorderColor:[[UIColor colorWithWhite:1 alpha:0.7] CGColor]];
+            [buttonBackLayer setBorderWidth:2];
+        }
+        return;
     }
 %end

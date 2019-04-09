@@ -1,9 +1,39 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+
+@interface MainController
+- (BOOL)incognitoContentVisible;
+@end
+
+@interface MainApplicationDelegate : NSObject <UIApplicationDelegate>
+- (id)mainController;
+@end
+
+@interface UIApplication (chrome)
++ (id)sharedApplication;
+@property (weak) id <UIApplicationDelegate> delegate;
+@end
+
+@interface BrowserViewController
+- (id)secondaryToolbarCoordinator;
+@end
+
+@interface SecondaryToolbarCoordinator
+- (id)viewController;
+@end
+
+@interface SecondaryToolbarViewController
+- (id)omniboxButton;
+@end
+
+@interface ToolbarSearchButton
+- (id)spotlightView;
+@end
+
 @interface SecondaryToolbarView
-    - (id)initWithButtonFactory:(id)arg;
-    - (id)blur;
+- (id)initWithButtonFactory:(id)arg;
+- (id)blur;
 @end
     
 @interface PrimaryToolbarView : SecondaryToolbarView

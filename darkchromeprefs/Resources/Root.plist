@@ -42,6 +42,24 @@
                 <string>True Black</string>
             </array>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+            <key>footerText</key>
+            <string>Add a small indicator around the Omnibox search button when in incognito</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.nwhit.darkchromeprefs</string>
+			<key>key</key>
+			<string>useIncognitoIndicator</string>
+			<key>label</key>
+			<string>Incognito Indicator</string>
+            <key>default</key>
+            <true/>
+		</dict>
 	</array>
 	<key>title</key>
 	<string>DarkChrome</string>
