@@ -1,6 +1,14 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface SecondaryToolbarView
+    - (id)initWithButtonFactory:(id)arg;
+    - (id)blur;
+@end
+    
+@interface PrimaryToolbarView : SecondaryToolbarView
+@end
+
 @interface OmniboxTextFieldIOS : UITextField
 - (id)initWithFrame:(CGRect)arg1 textColor:(id)arg2 tintColor:(id)arg3;
 @end

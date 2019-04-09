@@ -20,6 +20,7 @@ UIColor * bg;
 UIColor * fg;
 UIColor * altfg;
 UIColor * sep;
+UIColor * blurColor;
 
 %ctor {
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
@@ -33,39 +34,44 @@ UIColor * sep;
     UIColor* dark_color1 = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha: 1];
     UIColor* dark_color2 = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha: 1];
     UIColor* dark_color3 = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
+    UIColor* dark_color4 = [UIColor colorWithWhite:0.98 alpha: 0.4];
     UIColor* clear = [UIColor colorWithWhite:0 alpha:0];
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
+    UIColor* black_color4 = [UIColor colorWithWhite:0.5 alpha: 0.5];
 
     NSDictionary *darkScheme = @{
         @"background" : dark_color1,
         @"foreground" : dark_color2,
         @"altforeground" : dark_color2,
-        @"separ" : dark_color3
+        @"separ" : dark_color3,
+        @"blur": dark_color4
     };
 
     NSDictionary *flatDarkScheme = @{
         @"background" : dark_color1,
         @"foreground" : dark_color1,
         @"altforeground" : dark_color2,
-        @"separ" : clear
+        @"separ" : clear,
+        @"blur": dark_color4
     };
 
     NSDictionary *trueBlackScheme = @{
         @"background" : black_color1,
         @"foreground" : black_color1,
         @"altforeground" : black_color2,
-        @"separ" : clear
+        @"separ" : clear,
+        @"blur": black_color4
+            
     };
     chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
-    os_log(OS_LOG_DEFAULT, "%{public}@", chosenScheme);
     
     NSDictionary* schemeForString = @{@"dark" : darkScheme, @"flatDark" : flatDarkScheme, @"trueBlack" : trueBlackScheme};
-    bg = [[[schemeForString objectForKey:chosenScheme] objectForKey:@"background"] copy];
-    os_log(OS_LOG_DEFAULT, "%{public}p", schemeForString[chosenScheme]);
-    fg = [[schemeForString[chosenScheme] objectForKey:@"foreground"] copy];
-    altfg = [[schemeForString[chosenScheme] objectForKey:@"altforeground"] copy];
-    sep = [[schemeForString[chosenScheme] objectForKey:@"separ"] copy];
+    bg = [schemeForString[chosenScheme] objectForKey:@"background"];
+    fg = [schemeForString[chosenScheme] objectForKey:@"foreground"];
+    altfg = [schemeForString[chosenScheme] objectForKey:@"altforeground"];
+    sep = [schemeForString[chosenScheme] objectForKey:@"separ"];
+    blurColor = [schemeForString[chosenScheme] objectForKey:@"blur"];
 }
 
 // COLORS
@@ -860,6 +866,22 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook ToolbarButtonFactory
     -(id)initWithStyle:(NSInteger)arg {
         return %orig(1);
+    }
+%end
+    
+%hook SecondaryToolbarView
+    -(id)initWithButtonFactory:(id)arg {
+        id ret = %orig;
+        [[self blur] setBackgroundColor: blurColor];
+        return ret;
+    }
+%end
+    
+%hook PrimaryToolbarView
+    -(id)initWithButtonFactory:(id)arg {
+        id ret = %orig;
+        [[self blur] setBackgroundColor: blurColor];
+        return ret;
     }
 %end
     
