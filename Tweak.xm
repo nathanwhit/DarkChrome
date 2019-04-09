@@ -85,6 +85,7 @@ static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
 static Class suggestCellClass = %c(ContentSuggestionsCell);
 static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
 static Class settingsTextCellClass = %c(SettingsTextCell);
+static Class MDCCellClass = %c(MDCCollectionViewCell);
 static Class visContentViewClass = %c(_UIVisualEffectContentView);
 static Class visEffectViewClass = %c(UIVisualEffectView);
 static Class buttonClass = %c(UIButton);
@@ -321,36 +322,68 @@ static CGFloat locBarCornerRadius = 25;
     }
 %end
     
+static NSMutableSet *imageViewPassSet = [[NSMutableSet alloc] init];
+static NSMutableSet *imageViewSuggestSet = [[NSMutableSet alloc] init];
+static NSMutableSet *imageViewSettingsSet = [[NSMutableSet alloc] init];
 
+static UIImage* handleSuggestionCell(id cell, id image, id superview) {
+    UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [cell setTintColor: altfg];
+    if ([superview isKindOfClass:settingsTextCellClass] && [[cell interactionTintColor] isEqual:altfg]) {
+        [cell setBackgroundColor:altfg];
+    }
+    [[superview contentView] setBackgroundColor:nil];
+    return img;
+}
+
+static UIImage* handleSettingsCell(id cell, id image, id superview) {
+    UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [cell setTintColor: fg];
+    if ([[cell interactionTintColor] isEqual:fg]) {
+        [cell setBackgroundColor:fg];
+    }
+    [[superview contentView] setBackgroundColor:nil];
+    return img;
+}
 
 %hook UIImageView
     - (void)setImage:(id)arg {
-        if ([self respondsToSelector:@selector(_ui_superview)]) {
-            id superview = [self _ui_superview];
+        if ([imageViewPassSet containsObject: self]) {
+            %orig;
+            return;
+        }
+        if ([imageViewSuggestSet containsObject: self]) {
+            UIImage* img = handleSuggestionCell(self, arg, [self superview]);
+            %orig(img);
+            return;
+        }
+        else if ([imageViewSettingsSet containsObject: self]) {
+            id superview = [self superview];
+            UIImage* img = handleSettingsCell(self, arg, superview);
+            %orig(img);
+            return;
+        }
+        
+        if ([self respondsToSelector:@selector(superview)] && [[self superview] isKindOfClass: MDCCellClass]) {
+            id superview = [self superview];
             if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
-                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-                [self setTintColor: altfg];
-                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:altfg]) {
-                    [self setBackgroundColor:altfg];
-                    [self setTintColor: altfg];
-                }
-                [[superview contentView] setBackgroundColor:nil];
-                %orig(img);
+                [imageViewSuggestSet addObject: self];
+                UIImage* img = handleSuggestionCell(self, arg, superview);
+                %orig(img); 
+                return;
             } else if ([superview isKindOfClass:settingsTextCellClass]){
-                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-                [self setTintColor: fg];
-                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
-                    [self setBackgroundColor:fg];
-                    [self setTintColor: fg];
-                }
-                [[superview contentView] setBackgroundColor:nil];
+                [imageViewSettingsSet addObject: self];
+                UIImage* img = handleSettingsCell(self, arg, superview);
                 %orig(img);
+                return;
             }
             else {
+                [imageViewPassSet addObject: self];
                 %orig;
             }
         }
-         else {
+        else {
+            [imageViewPassSet addObject: self];
             %orig;
         }
     }
