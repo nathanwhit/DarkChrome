@@ -5,6 +5,7 @@ DarkChromePrefs_FILES = DRKCRootListController.m
 DarkChromePrefs_INSTALL_PATH = /Library/PreferenceBundles
 DarkChromePrefs_FRAMEWORKS = UIKit
 DarkChromePrefs_PRIVATE_FRAMEWORKS = Preferences
+DarkChromePrefs_CFLAGS += -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 

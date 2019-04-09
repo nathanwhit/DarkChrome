@@ -1,10 +1,9 @@
-#define INSPECT 0
+#define INSPECT 1
 
 
 #include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
-#include <Cephei/HBPreferences.h>
 
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 #define log(str) os_log(OS_LOG_DEFAULT, str)
@@ -13,52 +12,85 @@
 #include "InspCWrapper.m"
 #endif
 
-
-
-
-HBPreferences *preferences;
+NSDictionary *preferences;
+NSString* chosenScheme;
 UIColor * bg;
 UIColor * fg;
 UIColor * altfg;
 UIColor * sep;
+UIColor * blurColor;
+bool useIncognitoIndicator;
+
+bool incog = false;
+
+static void startInspection() {
+    if (INSPECT == 1) {
+        watchClass(%c(MainController));
+        setMaximumRelativeLoggingDepth(25);
+    }
+    return;
+}
+
+
 
 %ctor {
+    startInspection();
+    
+    NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
+    if (@available(iOS 11, *)) {
+        NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
+        preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
+    }
+    else {
+        preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
+    }
     UIColor* dark_color1 = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha: 1];
     UIColor* dark_color2 = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha: 1];
     UIColor* dark_color3 = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
+    UIColor* dark_color4 = [UIColor colorWithWhite:0.98 alpha: 0.4];
     UIColor* clear = [UIColor colorWithWhite:0 alpha:0];
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
+    UIColor* black_color4 = [UIColor colorWithWhite:0.5 alpha: 0.5];
+    
+    if (!preferences[@"useIncognitoIndicator"] || ![preferences[@"useIncognitoIndicator"] boolValue]) {
+        useIncognitoIndicator = false;
+    } else {
+        useIncognitoIndicator = true;
+    }
 
     NSDictionary *darkScheme = @{
         @"background" : dark_color1,
         @"foreground" : dark_color2,
         @"altforeground" : dark_color2,
-        @"separ" : dark_color3
+        @"separ" : dark_color3,
+        @"blur": dark_color4
     };
 
     NSDictionary *flatDarkScheme = @{
         @"background" : dark_color1,
         @"foreground" : dark_color1,
         @"altforeground" : dark_color2,
-        @"separ" : clear
+        @"separ" : clear,
+        @"blur": dark_color4
     };
 
     NSDictionary *trueBlackScheme = @{
         @"background" : black_color1,
         @"foreground" : black_color1,
         @"altforeground" : black_color2,
-        @"separ" : clear
+        @"separ" : clear,
+        @"blur": black_color4
+            
     };
-    preferences = [[HBPreferences alloc] initWithIdentifier:@"com.nwhit.darkchromeprefs"];    
-    NSString* chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
-    os_log(OS_LOG_DEFAULT, "%{public}@", chosenScheme);
+    chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
+    
     NSDictionary* schemeForString = @{@"dark" : darkScheme, @"flatDark" : flatDarkScheme, @"trueBlack" : trueBlackScheme};
-    bg = [[[schemeForString objectForKey:chosenScheme] objectForKey:@"background"] copy];
-    os_log(OS_LOG_DEFAULT, "%{public}p", schemeForString[chosenScheme]);
-    fg = [[schemeForString[chosenScheme] objectForKey:@"foreground"] copy];
-    altfg = [[schemeForString[chosenScheme] objectForKey:@"altforeground"] copy];
-    sep = [[schemeForString[chosenScheme] objectForKey:@"separ"] copy];
+    bg = [schemeForString[chosenScheme] objectForKey:@"background"];
+    fg = [schemeForString[chosenScheme] objectForKey:@"foreground"];
+    altfg = [schemeForString[chosenScheme] objectForKey:@"altforeground"];
+    sep = [schemeForString[chosenScheme] objectForKey:@"separ"];
+    blurColor = [schemeForString[chosenScheme] objectForKey:@"blur"];
 }
 
 // COLORS
@@ -78,6 +110,7 @@ static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
 static Class suggestCellClass = %c(ContentSuggestionsCell);
 static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
 static Class settingsTextCellClass = %c(SettingsTextCell);
+static Class MDCCellClass = %c(MDCCollectionViewCell);
 static Class visContentViewClass = %c(_UIVisualEffectContentView);
 static Class visEffectViewClass = %c(UIVisualEffectView);
 static Class buttonClass = %c(UIButton);
@@ -85,6 +118,34 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
+
+// KEYBOARD
+
+%hook OmniboxTextFieldIOS
+    - (id)initWithFrame:(CGRect)arg1 textColor:(id)arg2 tintColor:(id)arg3 {
+        id ret = %orig;
+        if ([ret respondsToSelector: @selector(setKeyboardAppearance:)]) {
+            [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
+        }
+        return ret;
+    }
+%end
+
+%hook UITextField
+    - (id)init {
+        id ret =  %orig;
+        [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
+        return ret;
+    }
+%end
+
+%hook UISearchBar
+    - (id)initWithFrame:(CGRect)arg {
+        id ret =  %orig;
+        [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
+        return ret;
+    }
+%end
 
 // INCOGNITO
 %hook IncognitoView
@@ -294,14 +355,6 @@ static CGFloat locBarCornerRadius = 25;
     }
 %end
     
-%hook ContentSuggestionsFooterCell
-    - (void)drawSeparatorIfNeeded {
-        %orig;
-        id separator = MSHookIvar<UIView*>(self, "_separatorView");
-        [separator setBackgroundColor:sep];
-    }
-%end
-    
 %hook ContentSuggestionsCell
     + (void)configureTitleLabel:(id)lbl {
         %orig;
@@ -314,36 +367,68 @@ static CGFloat locBarCornerRadius = 25;
     }
 %end
     
+static NSMutableSet *imageViewPassSet = [[NSMutableSet alloc] init];
+static NSMutableSet *imageViewSuggestSet = [[NSMutableSet alloc] init];
+static NSMutableSet *imageViewSettingsSet = [[NSMutableSet alloc] init];
 
+static UIImage* handleSuggestionCell(id cell, id image, id superview) {
+    UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [cell setTintColor: altfg];
+    if ([superview isKindOfClass:settingsTextCellClass] && [[cell interactionTintColor] isEqual:altfg]) {
+        [cell setBackgroundColor:altfg];
+    }
+    [[superview contentView] setBackgroundColor:nil];
+    return img;
+}
+
+static UIImage* handleSettingsCell(id cell, id image, id superview) {
+    UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [cell setTintColor: fg];
+    if ([[cell interactionTintColor] isEqual:fg]) {
+        [cell setBackgroundColor:fg];
+    }
+    [[superview contentView] setBackgroundColor:nil];
+    return img;
+}
 
 %hook UIImageView
     - (void)setImage:(id)arg {
-        if ([self respondsToSelector:@selector(_ui_superview)]) {
-            id superview = [self _ui_superview];
+        if ([imageViewPassSet containsObject: self]) {
+            %orig;
+            return;
+        }
+        if ([imageViewSuggestSet containsObject: self]) {
+            UIImage* img = handleSuggestionCell(self, arg, [self superview]);
+            %orig(img);
+            return;
+        }
+        else if ([imageViewSettingsSet containsObject: self]) {
+            id superview = [self superview];
+            UIImage* img = handleSettingsCell(self, arg, superview);
+            %orig(img);
+            return;
+        }
+        
+        if ([self respondsToSelector:@selector(superview)] && [[self superview] isKindOfClass: MDCCellClass]) {
+            id superview = [self superview];
             if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
-                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-                [self setTintColor: altfg];
-                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:altfg]) {
-                    [self setBackgroundColor:altfg];
-                    [self setTintColor: altfg];
-                }
-                [[superview contentView] setBackgroundColor:nil];
-                %orig(img);
+                [imageViewSuggestSet addObject: self];
+                UIImage* img = handleSuggestionCell(self, arg, superview);
+                %orig(img); 
+                return;
             } else if ([superview isKindOfClass:settingsTextCellClass]){
-                UIImage* img = [(UIImage*)arg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-                [self setTintColor: fg];
-                if ([superview isKindOfClass:settingsTextCellClass] && [[self interactionTintColor] isEqual:fg]) {
-                    [self setBackgroundColor:fg];
-                    [self setTintColor: fg];
-                }
-                [[superview contentView] setBackgroundColor:nil];
+                [imageViewSettingsSet addObject: self];
+                UIImage* img = handleSettingsCell(self, arg, superview);
                 %orig(img);
+                return;
             }
             else {
+                [imageViewPassSet addObject: self];
                 %orig;
             }
         }
-         else {
+        else {
+            [imageViewPassSet addObject: self];
             %orig;
         }
     }
@@ -799,7 +884,29 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %hook ToolbarButtonFactory
     -(id)initWithStyle:(NSInteger)arg {
+        if (arg == 1) {
+            incog = true;
+        }
+        else {
+            incog = false;
+        }
         return %orig(1);
+    }
+%end
+    
+%hook SecondaryToolbarView
+    -(id)initWithButtonFactory:(id)arg {
+        id ret = %orig;
+        [[self blur] setBackgroundColor: blurColor];
+        return ret;
+    }
+%end
+    
+%hook PrimaryToolbarView
+    -(id)initWithButtonFactory:(id)arg {
+        id ret = %orig;
+        [[self blur] setBackgroundColor: blurColor];
+        return ret;
     }
 %end
     
@@ -844,5 +951,15 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook BrowserViewController
     - (NSInteger)preferredStatusBarStyle {
         return UIStatusBarStyleLightContent;
+    }
+    
+    - (void)buildToolbarAndTabStrip {
+        %orig;
+        if (incog && useIncognitoIndicator) {
+            id buttonBackLayer = [[[[[[self secondaryToolbarCoordinator] viewController] view] omniboxButton] spotlightView] layer];
+            [buttonBackLayer setBorderColor:[[UIColor colorWithWhite:1 alpha:0.7] CGColor]];
+            [buttonBackLayer setBorderWidth:2];
+        }
+        return;
     }
 %end

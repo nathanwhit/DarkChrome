@@ -15,7 +15,7 @@
 		<key>isController</key>
 		<true/>
 		<key>label</key>
-		<string>DarkChromePrefs</string>
+		<string>DarkChrome</string>
 	</dict>
 </dict>
 </plist>

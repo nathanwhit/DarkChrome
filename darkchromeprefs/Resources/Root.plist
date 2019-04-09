@@ -8,7 +8,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>DarkChromePrefs Themes</string>
+			<string>DarkChrome Theme</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -41,11 +41,27 @@
                 <string>Flat Dark</string>
                 <string>True Black</string>
             </array>
-            <key>PostNotification</key>
-            <string>com.nwhit.darkchromeprefs/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+            <key>footerText</key>
+            <string>Add a small indicator around the Omnibox search button when in incognito</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.nwhit.darkchromeprefs</string>
+			<key>key</key>
+			<string>useIncognitoIndicator</string>
+			<key>label</key>
+			<string>Incognito Indicator</string>
+            <key>default</key>
+            <true/>
 		</dict>
 	</array>
 	<key>title</key>
-	<string>DarkChromePrefs</string>
+	<string>DarkChrome</string>
 </dict>
 </plist>
