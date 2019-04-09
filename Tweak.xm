@@ -113,17 +113,12 @@ static CGFloat locBarCornerRadius = 25;
         return ret;
     }
 %end
-    
+
+%hook UISearchBar
+    - (id)initWithFrame:(CGRect)arg {
         id ret =  %orig;
         [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
         return ret;
-    }
-
-
-%hook MainController
-    - (void)viewDidLoad {
-        %orig;
-        [[UITableView appearance] setSeparatorColor:sep];
     }
 %end
 
