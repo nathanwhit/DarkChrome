@@ -118,8 +118,15 @@ static CGFloat locBarCornerRadius = 25;
         [ret setKeyboardAppearance: UIKeyboardAppearanceDark];
         return ret;
     }
+
+
+%hook MainController
+    - (void)viewDidLoad {
+        %orig;
+        [[UITableView appearance] setSeparatorColor:sep];
+    }
 %end
-    
+
 // INCOGNITO
 %hook IncognitoView
     - (void)setBackgroundColor:(id)arg {
@@ -325,14 +332,6 @@ static CGFloat locBarCornerRadius = 25;
     - (void)configureCell:(id)cell {
         %orig;
         [[self label] setTextColor:white];
-    }
-%end
-    
-%hook ContentSuggestionsFooterCell
-    - (void)drawSeparatorIfNeeded {
-        %orig;
-        id separator = MSHookIvar<UIView*>(self, "_separatorView");
-        [separator setBackgroundColor:sep];
     }
 %end
     
