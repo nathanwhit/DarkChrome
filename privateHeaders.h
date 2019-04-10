@@ -63,6 +63,7 @@
 - (NSString*)selectedItemID;
 - (NSMutableArray*)items;
 - (UIView*)view;
+- (UICollectionView*)collectionView;
 @end
 
 @interface GridItem

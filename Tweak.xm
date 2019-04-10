@@ -21,6 +21,8 @@ CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
 CGFloat maxHeightDeltaCutoff;
+bool coldStart;
+bool firstTabSeen;
 
 bool incog = false;
 
@@ -99,6 +101,8 @@ static void startInspection() {
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     maxHeightDeltaCutoff = 0.95*maxHeightDelta;
+    coldStart = false;
+    firstTabSeen = false;
 }
 
 // COLORS
@@ -162,10 +166,19 @@ static CGFloat locBarCornerRadius = 25;
     }
 %end
 
+        coldStart = [[(MainApplicationDelegate*)[[UIApplication sharedApplication] delegate] mainController] isColdStart];
 // TAB OVERVIEW
 %hook GridCell
     - (void)setTheme:(NSUInteger)arg {
         %orig(2);
+    }
+%end
+    
+%hook GridViewController
+    - (void)loadView {
+        %orig;
+        [[self collectionView] setBackgroundColor:bg];
+        [[[self collectionView] backgroundView] setBackgroundColor:bg];
     }
 %end
     
@@ -526,19 +539,21 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook BrowserViewController
     - (void)displayTab:(id)tab {
-        if (incog) {
+        if (![self isActive] || inIncognito() || (coldStart && firstTabSeen)) {
             %orig;
             return;
         }
         NSNumber *t = @((NSInteger)tab);
-        if (tab != nil && ![t isEqual:activeTabID]) {
-            activeTabID = @((NSInteger)tab);
+        logf("Active tab: %{public}@", t);
+        firstTabSeen = true;
+        if (t != nil) {
+            if(![t isEqual:activeTabID]) {
+                activeTabID = @((NSInteger)tab);
+            }
             if (!fakeLocBars[activeTabID]) {
                 fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             }
-            else {
-                [fakeLocBars[activeTabID] needsReInit];
-            }
+            [fakeLocBars[activeTabID] needsReInit];
         }
         %orig;
     }
