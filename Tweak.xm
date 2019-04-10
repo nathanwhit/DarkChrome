@@ -1,13 +1,6 @@
-#define INSPECT 0
-
-
-#include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
-
-#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
-#define log(str) os_log(OS_LOG_DEFAULT, str)
 
 NSDictionary *preferences;
 NSString* chosenScheme;
@@ -27,21 +20,8 @@ CGFloat blurWhite;
 CGFloat blurAlpha;
 bool buildIncognito;
 
-#if INSPECT == 1
-#include "InspCWrapper.m"
-static void startInspection() {
-    watchClass(%c(TabModel));
-    setMaximumRelativeLoggingDepth(25);
-    return;
-}
-#endif
 
-%ctor {
-    #if INSPECT == 1
-    startInspection();
-    #endif
-    
-    
+%ctor {    
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
     if (@available(iOS 11, *)) {
         NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
@@ -116,7 +96,6 @@ static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
 static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
-// static UIColor * locBarColor = [UIColor colorWithWhite:0.2 alpha:0.8];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
 static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:1 alpha:0.7];
 
@@ -133,8 +112,6 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
-
-// static bool buildIncognito = false;
 
 bool inIncognito() {
     if (wrangler != nil) {
@@ -523,7 +500,6 @@ static UIImage* handleSettingsCell(id cell, id image, id superview) {
 static NSNumber* activeTabID = nil;
 static NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
 static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
-// static const CGFloat minBarHeight = 36;
 
 %hook TabGridViewController
     -(void)setView:(id)arg {
@@ -571,14 +547,12 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             return;
         }
         NSNumber *t = @((NSInteger)tab);
-        logf("%{public}@", t);
         firstTabSeen = true;
         if (t != nil) {
             activeTabID = t;
             if (!fakeLocBars[activeTabID]) {
                 fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             }
-            // [fakeLocBars[activeTabID] needsReInit];
         }
         %orig;
     }
@@ -610,17 +584,14 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
-        logf("Adding views to tab: %{public}@", activeTabID);
         %orig;
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
-            log("Failed");
             return;
         }
         if (activeTabID == nil) {
-            log("Caught activeTabID equal to nil");
             if (wrangler != nil) {
                 NSNumber* t = @((NSInteger)[[[wrangler mainInterface] tabModel] currentTab]);
                 if (t == nil) {
@@ -674,7 +645,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         }        
         CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
         CGFloat percentMinimized = (minDelt/maxHeightDelta);
-        // CGFloat percentExpanded = 1 - percentMinimized;
         CGFloat radiusDelta = percentMinimized*locBarCornerRadius;
         CGFloat alphaOffset = 0.1;
         CGFloat alphaDelta = ((maxHeightDelta-minDelt)/maxHeightDelta)*blurAlpha;
