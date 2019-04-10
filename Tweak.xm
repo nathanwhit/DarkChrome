@@ -1,4 +1,4 @@
-#define INSPECT 1
+#define INSPECT 0
 
 
 #include <os/log.h>
@@ -30,7 +30,7 @@ bool buildIncognito;
 #if INSPECT == 1
 #include "InspCWrapper.m"
 static void startInspection() {
-    watchClass(%c(UIVisualEffectView));
+    watchClass(%c(TabModel));
     setMaximumRelativeLoggingDepth(25);
     return;
 }
@@ -924,18 +924,15 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         [[self blur] setBackgroundColor: blurColor];
         return ret;
     }
-    -(void)setUpBlurredBackground {
+    -(void)setBlur:(id)blur {
         %orig;
-        // [[self blur] setBackgroundColor: blurColor];
+        [blur setBackgroundColor: blurColor];
     }
 %end
     
 %hook LocationBarViewController
     -(void)setIncognito:(BOOL)arg {
         %orig(true);
-    }
-    -(BOOL)incognito {
-        return true;
     }
 %end
     
@@ -957,24 +954,8 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     - (void)setIncognito:(BOOL)arg {
         %orig(true);
     }
-    - (BOOL)incognito {
-        return true;
-    }
 %end
     
-%hook OmniboxPopupBaseViewController
-    - (BOOL)incognito {
-        return true;
-    }
-    - (void)setIncognito:(BOOL)arg {
-        %orig(true);
-    }
-    - (void)viewDidLoad {
-        %orig;
-        [[self view] setBackgroundColor:fg];
-    }
-%end
-        
 %hook OmniboxPopupRow
     -(void)initWithIncognito:(BOOL)arg {
         %orig(true);
@@ -983,12 +964,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         %orig;
         [[self textTruncatingLabel] setTextColor: white];
         [[self detailTruncatingLabel] setTextColor: detail];
-    }
-%end
-    
-%hook SelfSizingTableView
-    - (id)initWithFrame:(CGRect)arg1 style:(NSInteger)arg2 {
-        return %orig(arg1, 1);
     }
 %end
     
