@@ -138,7 +138,7 @@ static CGFloat locBarCornerRadius = 25;
 
 bool inIncognito() {
     if (wrangler != nil) {
-        return [[wrangler currentInterface] incognito];;
+        return [[wrangler currentInterface] incognito];
     }
     else {
         return false;
@@ -184,7 +184,9 @@ bool inIncognito() {
     - (void)createMainBrowser {
         %orig;
         wrangler = (BrowserViewWrangler*)self;
-        coldStart = [[(MainApplicationDelegate*)[[UIApplication sharedApplication] delegate] mainController] isColdStart];
+        if (firstTabSeen == false) {
+            coldStart = [[(MainApplicationDelegate*)[[UIApplication sharedApplication] delegate] mainController] isColdStart];
+        }
     }
 %end
 
@@ -564,20 +566,19 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             return;
         }
         if (coldStart && firstTabSeen) {
-            %orig;
             coldStart = false;
+            %orig;
             return;
         }
         NSNumber *t = @((NSInteger)tab);
+        logf("%{public}@", t);
         firstTabSeen = true;
         if (t != nil) {
-            if(![t isEqual:activeTabID]) {
-                activeTabID = @((NSInteger)tab);
-            }
+            activeTabID = t;
             if (!fakeLocBars[activeTabID]) {
                 fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             }
-            [fakeLocBars[activeTabID] needsReInit];
+            // [fakeLocBars[activeTabID] needsReInit];
         }
         %orig;
     }
@@ -609,13 +610,25 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
+        logf("Adding views to tab: %{public}@", activeTabID);
         %orig;
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
+            log("Failed");
             return;
         }
+        if (activeTabID == nil) {
+            log("Caught activeTabID equal to nil");
+            if (wrangler != nil) {
+                NSNumber* t = @((NSInteger)[[[wrangler mainInterface] tabModel] currentTab]);
+                if (t == nil) {
+                    return;
+                }
+                activeTabID = t;
+            }
+        } 
         if (!fakeLocBars[activeTabID]) {
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
@@ -654,32 +667,16 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         NSLayoutConstraint* bh = %orig;
         CGFloat c = [(NSLayoutConstraint*)bh constant];
         CGFloat minDelt = fabs(fakeLocBarMinHeight - c);
-        if (activeTabID == nil || [[self subviews] count] < 3 || [fakeLocBars[activeTabID] needsInitialization]) {
+        if (activeTabID == nil) {
             return bh;
         }
         if (!fakeLocBars[activeTabID]) {
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
-        }        
-        if ([fakeLocBars[activeTabID] needsInitialization]) {
-
-            UIButton* button = [[self subviews] objectAtIndex:3];
-            [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
-            [[self fakeLocationBar] setBackgroundColor:locBarColor];
-            [fakeLocBars[activeTabID] setFakeBox:button];
-            id veff = [[button subviews] objectAtIndex:0];
-            [fakeLocBars[activeTabID] setMainVisualEffect:veff];
-            headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
-            [veff setBackgroundColor: blurColor];
-            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
-            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
-            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-            [[veff layer] setCornerRadius:locBarCornerRadius];
-            [[sub1 layer] setCornerRadius:locBarCornerRadius];
-            [[sub2 layer] setCornerRadius:locBarCornerRadius];
-            [fakeLocBars[activeTabID] setNeedsInitialization: false];
+            return bh;
         }
-        
+        if ([fakeLocBars[activeTabID] needsInitialization]) {
+            return bh;
+        }        
         CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
         CGFloat percentMinimized = (minDelt/maxHeightDelta);
         // CGFloat percentExpanded = 1 - percentMinimized;

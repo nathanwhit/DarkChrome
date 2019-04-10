@@ -1,6 +1,12 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+
+@interface BrowserViewController
+- (id)secondaryToolbarCoordinator;
+- (BOOL)isActive;
+@end
+
 @interface BrowserViewWrangler
 - (void)setCurrentInterface:(id)uInterface;
 - (id)incognitoInterface;
@@ -10,6 +16,8 @@
 
 @interface WrangledBrowser
 - (BOOL)incognito;
+- (id)tabModel;
+- (id)bvc;
 @end
 
 @interface UIApplication (chrome)
@@ -25,11 +33,6 @@
 
 @interface MainApplicationDelegate : NSObject <UIApplicationDelegate>
 - (id)mainController;
-@end
-
-@interface BrowserViewController
-- (id)secondaryToolbarCoordinator;
-- (BOOL)isActive;
 @end
 
 @interface SecondaryToolbarCoordinator
