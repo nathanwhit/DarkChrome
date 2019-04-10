@@ -554,12 +554,16 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook BrowserViewController
     - (void)displayTab:(id)tab {
-        if (![self isActive] || inIncognito() || (coldStart && firstTabSeen)) {
+        if (![self isActive] || inIncognito()) {
             %orig;
             return;
         }
+        if (coldStart && firstTabSeen) {
+            %orig;
+            coldStart = false;
+            return;
+        }
         NSNumber *t = @((NSInteger)tab);
-        logf("Active tab: %{public}@", t);
         firstTabSeen = true;
         if (t != nil) {
             if(![t isEqual:activeTabID]) {
