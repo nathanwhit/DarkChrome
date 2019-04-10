@@ -947,7 +947,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
     
 %hook OmniboxPopupPresenter 
-    - (id)initWithPopupPositioner:(id)arg1 popupViewController:(id)arg2 inIncognito:(BOOL)arg3 {
+    - (id)initWithPopupPositioner:(id)arg1 popupViewController:(id)arg2 incognito:(BOOL)arg3 {
         return %orig(arg1, arg2, true);
     }
     
