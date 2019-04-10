@@ -24,8 +24,6 @@ __weak BrowserViewWrangler *wrangler;
 bool coldStart;
 bool firstTabSeen;
 
-bool incog = false;
-
 #if INSPECT == 1
 #include InspCWrapper.m
 static void startInspection() {
@@ -101,6 +99,7 @@ static void startInspection() {
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
+    wrangler=nil;
     coldStart = false;
     firstTabSeen = false;
 }
@@ -129,6 +128,17 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
+
+bool inIncognito() {
+    if (wrangler != nil) {
+        return [[wrangler currentInterface] incognito];;
+    }
+    else {
+        return false;
+    }
+}
+
+static bool buildIncognito = false;
 
 // KEYBOARD
 
@@ -164,8 +174,15 @@ static CGFloat locBarCornerRadius = 25;
         %orig(bg);
     }
 %end
-
+   
+%hook BrowserViewWrangler
+    - (void)createMainBrowser {
+        %orig;
+        wrangler = (BrowserViewWrangler*)self;
         coldStart = [[(MainApplicationDelegate*)[[UIApplication sharedApplication] delegate] mainController] isColdStart];
+    }
+%end
+
 // TAB OVERVIEW
 %hook GridCell
     - (void)setTheme:(NSUInteger)arg {
@@ -287,7 +304,6 @@ static CGFloat locBarCornerRadius = 25;
     - (void)loadModel {
         %orig;
         [[self collectionView] setBackgroundColor:bg];
-        log("Loading model");
     }
 %end
 
@@ -880,10 +896,10 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook ToolbarButtonFactory
     -(id)initWithStyle:(NSInteger)arg {
         if (arg == 1) {
-            incog = true;
+            buildIncognito = true;
         }
         else {
-            incog = false;
+            buildIncognito = false;
         }
         return %orig(1);
     }
@@ -911,7 +927,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %hook LocationBarViewController
     -(void)setIncognito:(BOOL)arg {
-        %orig(YES);
+        %orig(true);
     }
 %end
     
@@ -923,7 +939,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
     
 %hook OmniboxPopupPresenter 
-    - (id)initWithPopupPositioner:(id)arg1 popupViewController:(id)arg2 incognito:(BOOL)arg3 {
+    - (id)initWithPopupPositioner:(id)arg1 popupViewController:(id)arg2 inIncognito:(BOOL)arg3 {
         return %orig(arg1, arg2, true);
     }
     
@@ -936,7 +952,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %end
     
 %hook OmniboxPopupRow
-    -(void)initWithIncognito:(BOOL)incog {
+    -(void)initWithIncognito:(BOOL)arg {
         %orig(true);
     }
     - (void)layoutAccessoryViews {
@@ -954,7 +970,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
     - (void)buildToolbarAndTabStrip {
         %orig;
-        if (incog && useIncognitoIndicator) {
+        if (buildIncognito && useIncognitoIndicator) {
             id buttonBackLayer = [[[[[[self secondaryToolbarCoordinator] viewController] view] omniboxButton] spotlightView] layer];
             [buttonBackLayer setBorderColor:[[UIColor colorWithWhite:1 alpha:0.7] CGColor]];
             [buttonBackLayer setBorderWidth:2];
