@@ -74,6 +74,10 @@
 - (id)textTruncatingLabel;	
 @end
 
+@interface OmniboxPopupBaseViewController
+- (id)view;
+@end
+
 
 @interface GridViewController
 - (void)setSelectedItemID:(NSString*)itemID;
