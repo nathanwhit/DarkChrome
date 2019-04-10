@@ -20,7 +20,7 @@ bool useIncognitoIndicator;
 CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
-CGFloat maxHeightDeltaCutoff;
+__weak BrowserViewWrangler *wrangler; 
 bool coldStart;
 bool firstTabSeen;
 
@@ -100,7 +100,7 @@ static void startInspection() {
     fakeLocBarMinHeight = LocationBarHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
-    maxHeightDeltaCutoff = 0.95*maxHeightDelta;
+    
     coldStart = false;
     firstTabSeen = false;
 }
@@ -109,10 +109,9 @@ static void startInspection() {
 static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
 static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
-static UIColor * oldeff = [UIColor colorWithRed:0.98 green:0.98 blue:0.98 alpha:0.4];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
-static UIColor * locBarColor = [UIColor colorWithWhite:1 alpha:0.12];
+static UIColor * locBarColor = [UIColor colorWithWhite:0.2 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
 static CGFloat locbar_viseffect_rgb = 0.98;
 static CGFloat locbar_viseffect_alph = 0.4;
@@ -654,26 +653,17 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         }
         
         CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
+        CGFloat percentMinimized = (minDelt/maxHeightDelta);
+        CGFloat percentExpanded = 1 - percentMinimized;
+        CGFloat radiusDelta = percentMinimized*locBarCornerRadius;
+        CGFloat alphaDelta = ((maxHeightDelta-minDelt)/maxHeightDelta)*locbar_viseffect_alph;
         [fakeLocBars[activeTabID] setOldHeight: c];
-        if (minDelt <= maxHeightDeltaCutoff && delta < 0) {
-            CGFloat radiusDelta = (minDelt/maxHeightDelta)*locBarCornerRadius;
+        if (delta != 0) {
             UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
             id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
             id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
             [[main layer] setCornerRadius:radiusDelta];
-            [[sub1 layer] setCornerRadius:radiusDelta];
-            [[sub2 layer] setCornerRadius:radiusDelta];
-            [main setBackgroundColor:oldeff];
-            CGFloat alph = ((maxHeightDelta-minDelt)/maxHeightDelta)*locbar_viseffect_alph;
-            [main setBackgroundColor: [UIColor colorWithRed:locbar_viseffect_rgb green:locbar_viseffect_rgb blue:locbar_viseffect_rgb alpha:alph]];
-        }
-        else if (delta > 0) {
-            CGFloat radiusDelta = (minDelt/maxHeightDelta)*locBarCornerRadius;
-            UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
-            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-            CGFloat alph = ((maxHeightDelta-minDelt)/maxHeightDelta)*locbar_viseffect_alph;
-            [main setBackgroundColor: [UIColor colorWithRed:locbar_viseffect_rgb green:locbar_viseffect_rgb blue:locbar_viseffect_rgb alpha:alph]];
+            [main setBackgroundColor: [UIColor colorWithRed:locbar_viseffect_rgb green:locbar_viseffect_rgb blue:locbar_viseffect_rgb alpha:alphaDelta]];
             [[main layer] setCornerRadius:radiusDelta];
             [[sub1 layer] setCornerRadius:radiusDelta];
             [[sub2 layer] setCornerRadius:radiusDelta];
