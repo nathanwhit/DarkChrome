@@ -677,7 +677,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         // CGFloat percentExpanded = 1 - percentMinimized;
         CGFloat radiusDelta = percentMinimized*locBarCornerRadius;
         CGFloat alphaOffset = 0.1;
-        CGFloat alphaDelta = alphaOffset + ((maxHeightDelta-minDelt)/maxHeightDelta)*blurAlpha;
+        CGFloat alphaDelta = ((maxHeightDelta-minDelt)/maxHeightDelta)*blurAlpha;
         [fakeLocBars[activeTabID] setOldHeight: c];
         if (delta != 0) {
             UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
@@ -690,6 +690,10 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             [[sub2 layer] setCornerRadius:radiusDelta];
         }
         return bh;
+    }
+    
+    - (void)setFakeboxHighlighted:(BOOL)arg {
+        return;
     }
     
     - (void)dealloc {
@@ -927,6 +931,13 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     -(void)setBlur:(id)blur {
         %orig;
         [blur setBackgroundColor: blurColor];
+    }
+    -(id)blur {
+        id ret = %orig;
+        if (ret != nil) {
+            [ret setBackgroundColor: blurColor];
+        }
+        return ret;
     }
 %end
     
