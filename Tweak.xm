@@ -52,11 +52,11 @@ static void startInspection() {
     UIColor* dark_color1 = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha: 1];
     UIColor* dark_color2 = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha: 1];
     UIColor* dark_color3 = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
-    UIColor* dark_color4 = [UIColor colorWithWhite:0.98 alpha: 0.4];
+    UIColor* dark_color4 = [UIColor colorWithWhite:0.8 alpha: 0.4];
     UIColor* clear = [UIColor colorWithWhite:0 alpha:0];
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
-    UIColor* black_color4 = [UIColor colorWithWhite:0.5 alpha: 0.5];
+    UIColor* black_color4 = [UIColor colorWithWhite:0.3 alpha: 0.5];
     
     if (!preferences[@"useIncognitoIndicator"] || ![preferences[@"useIncognitoIndicator"] boolValue]) {
         useIncognitoIndicator = false;
@@ -599,7 +599,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             id veff = [[arg subviews] objectAtIndex:0];
             [fakeLocBars[activeTabID] setMainVisualEffect:veff];
             headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
-            [veff setBackgroundColor:oldeff];
+            [veff setBackgroundColor: blurColor];
             [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
             [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
             id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
@@ -613,7 +613,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
     - (void)setFakeboxHighlighted:(BOOL)highlighted {
         %orig;
-        [[self fakeLocationBar] setBackgroundColor: [UIColor colorWithWhite:0.2 alpha:1]];
+        // [[self fakeLocationBar] setBackgroundColor: locBarColor];
     }
     
     - (void)setFakeLocationBarHeightConstraint:(id)arg {
@@ -642,7 +642,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             id veff = [[button subviews] objectAtIndex:0];
             [fakeLocBars[activeTabID] setMainVisualEffect:veff];
             headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
-            [veff setBackgroundColor:oldeff];
+            [veff setBackgroundColor: blurColor];
             [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
             [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
             id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
@@ -912,6 +912,10 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         id ret = %orig;
         [[self blur] setBackgroundColor: blurColor];
         return ret;
+    }
+    -(void)setBlur:(id)blur {
+        %orig;
+        [blur setBackgroundColor: blurColor];
     }
 %end
     
