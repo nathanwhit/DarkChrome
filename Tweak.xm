@@ -23,6 +23,7 @@ CGFloat maxHeightDelta;
 __weak BrowserViewWrangler *wrangler; 
 bool coldStart;
 bool firstTabSeen;
+bool buildIncognito;
 
 #if INSPECT == 1
 #include "InspCWrapper.m"
@@ -102,6 +103,8 @@ static void startInspection() {
     wrangler=nil;
     coldStart = false;
     firstTabSeen = false;
+    
+    buildIncognito = false;
 }
 
 // COLORS
@@ -112,7 +115,7 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * locBarColor = [UIColor colorWithWhite:0.2 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
-static CGFloat locbar_viseffect_rgb = 0.98;
+static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:1 alpha:0.7];
 static CGFloat locbar_viseffect_alph = 0.4;
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
@@ -129,6 +132,8 @@ static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25;
 
+// static bool buildIncognito = false;
+
 bool inIncognito() {
     if (wrangler != nil) {
         return [[wrangler currentInterface] incognito];;
@@ -137,8 +142,6 @@ bool inIncognito() {
         return false;
     }
 }
-
-static bool buildIncognito = false;
 
 // KEYBOARD
 
@@ -902,7 +905,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %hook ToolbarButtonFactory
     -(id)initWithStyle:(NSInteger)arg {
-        if (arg == 1) {
+        if (arg==1) {
             buildIncognito = true;
         }
         else {
@@ -979,7 +982,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         %orig;
         if (buildIncognito && useIncognitoIndicator) {
             id buttonBackLayer = [[[[[[self secondaryToolbarCoordinator] viewController] view] omniboxButton] spotlightView] layer];
-            [buttonBackLayer setBorderColor:[[UIColor colorWithWhite:1 alpha:0.7] CGColor]];
+            [buttonBackLayer setBorderColor: [incognitoIndicatorColor CGColor]];
             [buttonBackLayer setBorderWidth:2];
         }
         return;
