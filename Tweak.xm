@@ -25,7 +25,7 @@ bool coldStart;
 bool firstTabSeen;
 
 #if INSPECT == 1
-#include InspCWrapper.m
+#include "InspCWrapper.m"
 static void startInspection() {
     watchClass(%c(TabModel));
     setMaximumRelativeLoggingDepth(25);
@@ -606,6 +606,9 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         }
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
             return;
+        }
+        if (!fakeLocBars[activeTabID]) {
+            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
         if ([fakeLocBars[activeTabID] needsInitialization]) {
             [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
