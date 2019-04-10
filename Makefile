@@ -1,4 +1,5 @@
 export TARGET = :clang:11.2:10.3
+export COPYFILE_DISABLE=1
 
 include $(THEOS)/makefiles/common.mk
 

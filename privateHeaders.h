@@ -2,12 +2,22 @@
 #define PRIVATEHEADERS_H
 
 
-@interface MainController
-- (BOOL)incognitoContentVisible;
+@interface BrowserViewController
+- (id)secondaryToolbarCoordinator;
+- (BOOL)isActive;
 @end
 
-@interface MainApplicationDelegate : NSObject <UIApplicationDelegate>
-- (id)mainController;
+@interface BrowserViewWrangler
+- (void)setCurrentInterface:(id)uInterface;
+- (id)incognitoInterface;
+- (id)mainInterface;
+- (id)currentInterface;
+@end
+
+@interface WrangledBrowser
+- (BOOL)incognito;
+- (id)tabModel;
+- (id)bvc;
 @end
 
 @interface UIApplication (chrome)
@@ -15,8 +25,14 @@
 @property (weak) id <UIApplicationDelegate> delegate;
 @end
 
-@interface BrowserViewController
-- (id)secondaryToolbarCoordinator;
+@interface MainController
+- (BOOL)incognitoContentVisible;
+- (id)interfaceProvider;
+- (BOOL)isColdStart;
+@end
+
+@interface MainApplicationDelegate : NSObject <UIApplicationDelegate>
+- (id)mainController;
 @end
 
 @interface SecondaryToolbarCoordinator
@@ -64,6 +80,7 @@
 - (NSString*)selectedItemID;
 - (NSMutableArray*)items;
 - (UIView*)view;
+- (UICollectionView*)collectionView;
 @end
 
 @interface GridItem
