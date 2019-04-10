@@ -1,7 +1,6 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
-
 @interface MainController
 - (BOOL)incognitoContentVisible;
 @end
