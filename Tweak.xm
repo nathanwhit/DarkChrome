@@ -662,7 +662,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
             id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
             id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-            [[main layer] setCornerRadius:radiusDelta];
+            [[self fakeLocationBar] setBackgroundColor:[UIColor colorWithWhite:0.2+(0.5*percentExpanded) alpha:1-(0.78*percentExpanded)]];
             [main setBackgroundColor: [UIColor colorWithRed:locbar_viseffect_rgb green:locbar_viseffect_rgb blue:locbar_viseffect_rgb alpha:alphaDelta]];
             [[main layer] setCornerRadius:radiusDelta];
             [[sub1 layer] setCornerRadius:radiusDelta];
