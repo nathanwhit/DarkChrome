@@ -651,11 +651,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         }
     }
     
-    - (void)setFakeboxHighlighted:(BOOL)highlighted {
-        %orig(false);
-        [[self fakeLocationBar] setBackgroundColor: locBarColor];
-    }
-    
     - (void)setFakeLocationBarHeightConstraint:(id)arg {
         %orig;
         if (arg != nil && fakeLocBars[activeTabID] != nil) {
