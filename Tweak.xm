@@ -18,6 +18,7 @@ bool coldStart;
 bool firstTabSeen;
 CGFloat blurWhite;
 CGFloat blurAlpha;
+CGFloat alphaOffset;
 bool buildIncognito;
 
 
@@ -37,7 +38,7 @@ bool buildIncognito;
     UIColor* clear = [UIColor colorWithWhite:0 alpha:0];
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
-    UIColor* black_color4 = [UIColor colorWithWhite:0.3 alpha: 0.5];
+    UIColor* black_color4 = [UIColor colorWithWhite:0.3 alpha: 0.6];
     
     if (!preferences[@"useIncognitoIndicator"] || ![preferences[@"useIncognitoIndicator"] boolValue]) {
         useIncognitoIndicator = false;
@@ -50,7 +51,8 @@ bool buildIncognito;
         @"foreground" : dark_color2,
         @"altforeground" : dark_color2,
         @"separ" : dark_color3,
-        @"blur": dark_color4
+        @"blur": dark_color4,
+        @"offset": @(0.09)
     };
 
     NSDictionary *flatDarkScheme = @{
@@ -58,7 +60,8 @@ bool buildIncognito;
         @"foreground" : dark_color1,
         @"altforeground" : dark_color2,
         @"separ" : clear,
-        @"blur": dark_color4
+        @"blur": dark_color4,
+        @"offset": @(0.09)
     };
 
     NSDictionary *trueBlackScheme = @{
@@ -66,7 +69,8 @@ bool buildIncognito;
         @"foreground" : black_color1,
         @"altforeground" : black_color2,
         @"separ" : clear,
-        @"blur": black_color4
+        @"blur": black_color4,
+        @"offset": @(0.16)
             
     };
     chosenScheme = [[NSString alloc] initWithString:[preferences objectForKey:@"colorScheme"]];
@@ -78,6 +82,7 @@ bool buildIncognito;
     sep = [schemeForString[chosenScheme] objectForKey:@"separ"];
     blurColor = [schemeForString[chosenScheme] objectForKey:@"blur"];
     [blurColor getWhite: &blurWhite alpha: &blurAlpha];
+    alphaOffset = [(NSNumber*)[schemeForString[chosenScheme] objectForKey:@"offset"] doubleValue];
     
     fakeLocBarMinHeight = LocationBarHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
@@ -646,14 +651,13 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
         CGFloat percentMinimized = (minDelt/maxHeightDelta);
         CGFloat radiusDelta = percentMinimized*locBarCornerRadius;
-        CGFloat alphaOffset = 0.1;
-        CGFloat alphaDelta = ((maxHeightDelta-minDelt)/maxHeightDelta)*blurAlpha;
+        CGFloat alphaDelta = alphaOffset + ((maxHeightDelta-minDelt)/maxHeightDelta)*blurAlpha;
         [fakeLocBars[activeTabID] setOldHeight: c];
         if (delta != 0) {
             UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
             id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
             id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-            [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent: fmin(alphaOffset, alphaDelta)]];
+            [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent: alphaOffset]];
             [main setBackgroundColor: [blurColor colorWithAlphaComponent: alphaDelta]];
             [[main layer] setCornerRadius:radiusDelta];
             [[sub1 layer] setCornerRadius:radiusDelta];
