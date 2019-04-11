@@ -102,7 +102,7 @@ static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
-static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:1 alpha:0.7];
+static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:0.9 alpha:0.5];
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
@@ -963,7 +963,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         if (buildIncognito && useIncognitoIndicator) {
             id buttonBackLayer = [[[[[[self secondaryToolbarCoordinator] viewController] view] omniboxButton] spotlightView] layer];
             [buttonBackLayer setBorderColor: [incognitoIndicatorColor CGColor]];
-            [buttonBackLayer setBorderWidth:2];
+            [buttonBackLayer setBorderWidth:2.5];
         }
         return;
     }
