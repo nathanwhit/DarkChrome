@@ -1,6 +1,20 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface GSKGlifVoiceSearchContainerView
+@property (strong) UIColor *backgroundColor;
+@end
+
+@interface GSKStreamingTextView
+@property (strong) UIColor *fillColor;
+@property (strong) UIColor *stableColor;
+@property (strong) UIColor *unstableColor;
+@end
+
+@interface QTMButton
+@property (strong) UIColor *tintColor;
+@end
+
 @interface ToolbarConfiguration
 @property (strong) NSNumber *incognito;
 @property (strong) UIColor *buttonsTintColor;

@@ -116,6 +116,33 @@ static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25; 
 
+// VOICE SEARCH UI
+%hook GSKGlifVoiceSearchContainerView
+    - (void)setBackgroundColor:(UIColor*)color {
+        %orig(fg);
+    }
+%end
+
+%hook GSKStreamingTextView
+    - (void)setFillColor:(UIColor*)color {
+        %orig(fg);
+    }
+
+    - (void)setStableColor:(UIColor*)color {
+        %orig(txt);
+    }
+
+    - (void)setUnstableColor:(UIColor*)color {
+        %orig(detail);
+    }
+%end
+
+%hook QTMButton
+    - (void)setTintColor:(UIColor*)color {
+        %orig(white);
+    }
+%end
+
 // KEYBOARD
 
 %hook OmniboxTextFieldIOS
