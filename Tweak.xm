@@ -114,16 +114,7 @@ static Class buttonClass = %c(UIButton);
 static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
-static CGFloat locBarCornerRadius = 25;
-
-bool inIncognito() {
-    if (wrangler != nil) {
-        return [[wrangler currentInterface] incognito];
-    }
-    else {
-        return false;
-    }
-}
+static CGFloat locBarCornerRadius = 25; 
 
 // KEYBOARD
 
