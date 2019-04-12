@@ -1,6 +1,12 @@
+#define INSPECT 0
+
+#include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
+
+#define log(str) os_log(OS_LOG_DEFAULT, str)
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 
 NSDictionary *preferences;
 NSString* chosenScheme;
@@ -20,8 +26,16 @@ CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
 
+#if INSPECT==1
+#include "InspCWrapper.m"
+#endif
 
-%ctor {    
+
+%ctor {
+    #if INSPECT==1
+    watchClass(%c(ToolbarSearchButton));
+    #endif
+
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
     bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:nil];
         if  (prefsInitialized) {
