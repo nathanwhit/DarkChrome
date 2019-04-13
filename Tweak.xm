@@ -939,7 +939,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             // [config setButtonsTintColor:bg];
             [[(ToolbarSearchButton*)self imageView] setImage:[(UIImage*)[[(ToolbarSearchButton*)self imageView] image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
             [[(ToolbarSearchButton*)self imageView] setTintColor: bg];
-            [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: txt];
+            [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: white];
         }
     }
     - (void)setTintColor:(UIColor*)tint {
@@ -953,7 +953,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     - (void)setDimmed:(BOOL)dim {
         %orig;
         if ([[[(ToolbarSearchButton*)self configuration] incognito] boolValue] == true) {
-            [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: txt];
+            [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: white];
         }
     }
 %end
