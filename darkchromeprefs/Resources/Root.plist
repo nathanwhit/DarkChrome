@@ -46,7 +46,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
             <key>footerText</key>
-            <string>Add a small indicator around the Omnibox search button when in incognito</string>
+            <string>Invert the colors of the Omnibox search button when you're in incognito</string>
 		</dict>
 		<dict>
 			<key>cell</key>

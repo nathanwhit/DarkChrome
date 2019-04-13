@@ -19,7 +19,6 @@ bool firstTabSeen;
 CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
-bool buildIncognito;
 
 
 %ctor {    
@@ -92,7 +91,6 @@ bool buildIncognito;
     coldStart = false;
     firstTabSeen = false;
     
-    buildIncognito = false;
 }
 
 // COLORS
@@ -116,16 +114,34 @@ static Class buttonClass = %c(UIButton);
 static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
-static CGFloat locBarCornerRadius = 25;
+static CGFloat locBarCornerRadius = 25; 
 
-bool inIncognito() {
-    if (wrangler != nil) {
-        return [[wrangler currentInterface] incognito];
+// VOICE SEARCH UI
+%hook GSKGlifVoiceSearchContainerView
+    - (void)setBackgroundColor:(UIColor*)color {
+        %orig(fg);
     }
-    else {
-        return false;
+%end
+
+%hook GSKStreamingTextView
+    - (void)setFillColor:(UIColor*)color {
+        %orig(fg);
     }
-}
+
+    - (void)setStableColor:(UIColor*)color {
+        %orig(txt);
+    }
+
+    - (void)setUnstableColor:(UIColor*)color {
+        %orig(detail);
+    }
+%end
+
+%hook QTMButton
+    - (void)setTintColor:(UIColor*)color {
+        %orig(white);
+    }
+%end
 
 // KEYBOARD
 
@@ -542,10 +558,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook BrowserViewController
     - (void)displayTab:(id)tab {
-        if (![self isActive] || inIncognito()) {
-            %orig;
-            return;
-        }
         if (coldStart && firstTabSeen) {
             coldStart = false;
             %orig;
@@ -875,16 +887,21 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         %orig(1);
     }
 %end
+
+%hook ToolbarConfiguration
+    %property (strong) NSNumber *incognito;
+%end
     
 %hook ToolbarButtonFactory
     -(id)initWithStyle:(NSInteger)arg {
-        if (arg==1) {
-            buildIncognito = true;
+        ToolbarButtonFactory* factory = %orig(1);
+        if (arg==1 && useIncognitoIndicator) {
+            [[factory toolbarConfiguration] setIncognito: @true];
         }
         else {
-            buildIncognito = false;
+            [[factory toolbarConfiguration] setIncognito: @false];
         }
-        return %orig(1);
+        return factory;
     }
 %end
     
@@ -912,6 +929,32 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             [ret setBackgroundColor: blurColor];
         }
         return ret;
+    }
+%end
+
+%hook ToolbarSearchButton
+    - (void)setConfiguration:(ToolbarConfiguration*)config {
+        %orig;
+        if ([[config incognito] boolValue] == true) {
+            // [config setButtonsTintColor:bg];
+            [[(ToolbarSearchButton*)self imageView] setImage:[(UIImage*)[[(ToolbarSearchButton*)self imageView] image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+            [[(ToolbarSearchButton*)self imageView] setTintColor: bg];
+            [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: txt];
+        }
+    }
+    - (void)setTintColor:(UIColor*)tint {
+        if ([[[(ToolbarSearchButton*)self configuration] incognito] boolValue] == true) {
+            %orig(bg);
+        }
+        else {
+            %orig;
+        }
+    }
+    - (void)setDimmed:(BOOL)dim {
+        %orig;
+        if ([[[(ToolbarSearchButton*)self configuration] incognito] boolValue] == true) {
+            [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: txt];
+        }
     }
 %end
     
@@ -956,15 +999,5 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook BrowserViewController
     - (NSInteger)preferredStatusBarStyle {
         return UIStatusBarStyleLightContent;
-    }
-    
-    - (void)buildToolbarAndTabStrip {
-        %orig;
-        if (buildIncognito && useIncognitoIndicator) {
-            id buttonBackLayer = [[[[[[self secondaryToolbarCoordinator] viewController] view] omniboxButton] spotlightView] layer];
-            [buttonBackLayer setBorderColor: [incognitoIndicatorColor CGColor]];
-            [buttonBackLayer setBorderWidth:2.5];
-        }
-        return;
     }
 %end

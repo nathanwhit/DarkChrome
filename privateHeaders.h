@@ -1,6 +1,30 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface GSKGlifVoiceSearchContainerView
+@property (strong) UIColor *backgroundColor;
+@end
+
+@interface GSKStreamingTextView
+@property (strong) UIColor *fillColor;
+@property (strong) UIColor *stableColor;
+@property (strong) UIColor *unstableColor;
+@end
+
+@interface QTMButton
+@property (strong) UIColor *tintColor;
+@end
+
+@interface ToolbarConfiguration
+@property (strong) NSNumber *incognito;
+@property (strong) UIColor *buttonsTintColor;
+- (UIColor*)locationBarBackgroundColorWithVisibility:(CGFloat)vis;
+@end
+
+@interface ToolbarButtonFactory
+- (id)initWithStyle:(NSInteger)arg;
+@property (strong) ToolbarConfiguration* toolbarConfiguration;
+@end
 
 @interface BrowserViewController
 - (id)secondaryToolbarCoordinator;
@@ -15,7 +39,6 @@
 @end
 
 @interface WrangledBrowser
-- (BOOL)incognito;
 - (id)tabModel;
 - (id)bvc;
 @end
@@ -43,13 +66,20 @@
 - (id)omniboxButton;
 @end
 
-@interface ToolbarSearchButton
-- (id)spotlightView;
+@interface ToolbarSearchButton : UIButton
+@property (strong) NSNumber *inIncognito;
+- (UIImageView*)imageView;
+- (UIView*)spotlightView;
+- (void)setDimmed:(BOOL)dim;
+@property (strong) ToolbarConfiguration* configuration;
 @end
+
 
 @interface SecondaryToolbarView
 - (id)initWithButtonFactory:(id)arg;
 - (id)blur;
+- (ToolbarSearchButton*)omniboxButton;
+- (ToolbarButtonFactory*)buttonFactory;
 @end
     
 @interface PrimaryToolbarView : SecondaryToolbarView
