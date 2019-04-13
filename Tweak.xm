@@ -23,13 +23,23 @@ CGFloat alphaOffset;
 
 %ctor {    
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
-    if (@available(iOS 11, *)) {
-        NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
-        preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
-    }
-    else {
-        preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
-    }
+    bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:nil];
+        if  (prefsInitialized) {
+            if (@available(iOS 11, *)) {
+            NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
+            preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
+            }
+            else {
+                preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
+            }
+        }
+        else {
+            preferences = @{
+                @"useIncognitoIndicator" : @true,
+                @"colorScheme" : @"dark",
+            };
+        }
+    
     UIColor* dark_color1 = [UIColor colorWithRed:0.133 green:0.133 blue:0.133 alpha: 1];
     UIColor* dark_color2 = [UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha: 1];
     UIColor* dark_color3 = [UIColor colorWithRed:0.266 green:0.266 blue:0.266 alpha: 1];
