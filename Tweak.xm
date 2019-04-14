@@ -285,6 +285,17 @@ static CGFloat locBarCornerRadius = 25;
         }   
     }
 %end
+
+%hook PopupMenuNavigationItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        %orig;
+        if ([arg1 respondsToSelector:@selector(titleLabel)]) {
+            [[arg1 titleLabel] setBackgroundColor:clear];
+            [[arg1 titleLabel] setTextColor:txt];
+            [[arg1 imageView] setBackgroundColor:clear];
+        }
+    }
+%end
     
     
 
