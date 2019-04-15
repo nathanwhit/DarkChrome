@@ -397,15 +397,13 @@ static CGFloat locBarCornerRadius = 25;
     }
 %end
 
-%hook TableViewURLCell
-
-    -(void)setBackgroundColor:(id)arg {
-        %orig(fg);
-    }
-
-    -(void)configureUILayout {
+%hook TableViewURLItem
+    - (void)configureCell:(id)cell withStyler:(id)styler {
         %orig;
-        __weak UIStackView* stack = [self horizontalStack];
+        if (![cell respondsToSelector:@selector(horizontalStack)]) {
+            return;
+        }
+        __weak UIStackView* stack = [cell horizontalStack];
         if (![stack arrangedSubviews] || [[stack arrangedSubviews] count] < 1) {
             return;
         }
@@ -420,8 +418,22 @@ static CGFloat locBarCornerRadius = 25;
                 [v setTextColor:txt];
             }
         }
-        [self setHorizontalStack: stack];
-        [[self faviconContainerView] setBackgroundColor:fg];
+        if ([cell respondsToSelector:@selector(horizontalStack)] && [cell respondsToSelector:@selector(faviconContainerView)]) {
+            [cell setHorizontalStack: stack];
+            [[cell faviconContainerView] setBackgroundColor:fg];
+        }
+    }
+%end
+
+%hook TableViewURLCell
+
+    -(void)setBackgroundColor:(id)arg {
+        %orig(fg);
+    }
+
+    -(void)configureUILayout {
+        %orig;
+        
     }
 %end
     
@@ -611,6 +623,9 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     - (id)initWithWebState:(id)ws {
         id tab = %orig;
         NSNumber *t = @((NSInteger)tab);
+        if (fakeLocBars == nil) {
+            fakeLocBars = [[NSMutableDictionary alloc] init];
+        }
         if (!fakeLocBars[t]) {
             fakeLocBars[t] = [[FakeLocationBar alloc] init];
         }
@@ -736,7 +751,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             return bh;
         }
-        if ([fakeLocBars[activeTabID] needsInitialization]) {
+        if ([fakeLocBars[activeTabID] needsInitialization] || [[fakeLocBars[activeTabID] effectViews] count] < 2) {
             return bh;
         }        
         CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
