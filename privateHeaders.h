@@ -1,6 +1,14 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface FormInputAccessoryView
+@property (strong) UIView *leadingView;
+@end
+
+@interface OverscrollActionsView
+@property (strong) UIColor *backgroundColor;
+@end
+
 @interface GSKGlifVoiceSearchContainerView
 @property (strong) UIColor *backgroundColor;
 @end

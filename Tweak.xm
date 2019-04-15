@@ -1,4 +1,4 @@
-#define INSPECT 0
+#define INSPECT 1
 
 #include <os/log.h>
 #include "privateHeaders.h"
@@ -33,15 +33,18 @@ CGFloat alphaOffset;
 
 %ctor {
     #if INSPECT==1
-    watchClass(%c(ToolbarSearchButton));
+    // watchClass(%c(FormSuggestionView));
+    watchSelector(@selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
     #endif
 
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
-    bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:nil];
-        if  (prefsInitialized) {
+    NSError* errorThrown;
+    bool isDir;
+    bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:&isDir];
+        if  (prefsInitialized && !isDir) {
             if (@available(iOS 11, *)) {
                 NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
-                preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
+                preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:errorThrown];
             }
             else {
                 preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
@@ -62,7 +65,6 @@ CGFloat alphaOffset;
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
     UIColor* black_color4 = [UIColor colorWithWhite:0.3 alpha: 0.6];
-    
     if (!preferences[@"useIncognitoIndicator"] || ![preferences[@"useIncognitoIndicator"] boolValue]) {
         useIncognitoIndicator = false;
     } else {
@@ -179,6 +181,22 @@ static CGFloat locBarCornerRadius = 25;
 
 // KEYBOARD
 
+// %hook FormSuggestionView
+//     - (void)setBackgroundColor:(UIColor*)arg {
+//         %orig(altfg);
+//     }
+//     - (UIColor*)backgroundColor {
+//         return altfg;
+//     }
+// %end
+
+%hook FormInputAccessoryView
+    - (void)setUpWithLeadingView:(id)arg1 navigationDelegate:(id)arg2 {
+        %orig;
+        id v = [self leadingView];
+        [v setBackgroundColor:altfg];
+    }
+%end
 
 %hook UIKBRenderConfig
     - (void)setLightKeyboard:(BOOL)arg {
@@ -741,11 +759,13 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     }
     
     - (void)dealloc {
+        log("ContentHeaderSuggestionsView dealloced");
         NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
         if (headerViews[hsh]) {
             [headerViews[hsh] needsReInit];
             [headerViews removeObjectForKey:hsh];
         }
+        logf("%{public}@", [fakeLocBars description]);
         %orig;
     }
     
