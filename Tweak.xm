@@ -39,12 +39,12 @@ CGFloat alphaOffset;
 
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
     NSError* errorThrown;
-    bool isDir;
+    BOOL isDir;
     bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:&isDir];
         if  (prefsInitialized && !isDir) {
             if (@available(iOS 11, *)) {
                 NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
-                preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:errorThrown];
+                preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:&errorThrown];
             }
             else {
                 preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
@@ -193,7 +193,7 @@ static CGFloat locBarCornerRadius = 25;
 %hook FormInputAccessoryView
     - (void)setUpWithLeadingView:(id)arg1 navigationDelegate:(id)arg2 {
         %orig;
-        id v = [self leadingView];
+        __weak id v = [self leadingView];
         [v setBackgroundColor:altfg];
     }
 %end
@@ -389,7 +389,7 @@ static CGFloat locBarCornerRadius = 25;
         [[arg inkView] setBackgroundColor:clear];
         [[arg textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
         if ([arg isKindOfClass:settingsTextCellClass]) {
-            id separator = MSHookIvar<UIView*>(arg, "_separatorView");
+            __weak id separator = MSHookIvar<UIView*>(arg, "_separatorView");
             [separator setBackgroundColor:sep];
             [[arg accessoryView] setTintColor:white];
             [[arg accessoryView] setBackgroundColor:clear];
@@ -429,7 +429,7 @@ static CGFloat locBarCornerRadius = 25;
 
 %hook ContentSuggestionsViewController
     - (id)collectionView {
-        id v = %orig;
+        __weak id v = %orig;
         [v setBackgroundColor:bg];
         return v;
     }
@@ -439,7 +439,7 @@ static CGFloat locBarCornerRadius = 25;
     - (id)initWithFrame:(CGRect)arg {
         id tile = %orig;
         [[tile titleLabel] setTextColor:white];
-        id imgView = [tile imageBackgroundView];
+        __weak id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
         [imgView setTintColor: altfg];
         return tile;
@@ -450,7 +450,7 @@ static CGFloat locBarCornerRadius = 25;
     - (id)initWithFrame:(CGRect)arg {
         id tile = %orig;
         [[tile titleLabel] setTextColor:white];
-        id imgView = [tile imageBackgroundView];
+        __weak id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
         [imgView setTintColor: altfg];
         return tile;
@@ -460,7 +460,7 @@ static CGFloat locBarCornerRadius = 25;
 %hook ContentSuggestionsArticlesHeaderCell
     - (void)drawSeparatorIfNeeded {
         %orig;
-        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        __weak id separator = MSHookIvar<UIView*>(self, "_separatorView");
         [separator setBackgroundColor:sep];
     }
     - (void)configureCell:(id)cell {
@@ -476,7 +476,7 @@ static CGFloat locBarCornerRadius = 25;
     }
     - (void)drawSeparatorIfNeeded {
         %orig;
-        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        __weak id separator = MSHookIvar<UIView*>(self, "_separatorView");
         [separator setBackgroundColor:sep];
     }
 %end
@@ -485,7 +485,7 @@ static NSMutableSet *imageViewPassSet = [[NSMutableSet alloc] init];
 static NSMutableSet *imageViewSuggestSet = [[NSMutableSet alloc] init];
 static NSMutableSet *imageViewSettingsSet = [[NSMutableSet alloc] init];
 
-static UIImage* handleSuggestionCell(id cell, id image, id superview) {
+static UIImage* handleSuggestionCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [cell setTintColor: altfg];
     if ([superview isKindOfClass:settingsTextCellClass] && [[cell interactionTintColor] isEqual:altfg]) {
@@ -495,7 +495,7 @@ static UIImage* handleSuggestionCell(id cell, id image, id superview) {
     return img;
 }
 
-static UIImage* handleSettingsCell(id cell, id image, id superview) {
+static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [cell setTintColor: fg];
     if ([[cell interactionTintColor] isEqual:fg]) {
@@ -517,14 +517,14 @@ static UIImage* handleSettingsCell(id cell, id image, id superview) {
             return;
         }
         else if ([imageViewSettingsSet containsObject: self]) {
-            id superview = [self superview];
+            __weak id superview = [self superview];
             UIImage* img = handleSettingsCell(self, arg, superview);
             %orig(img);
             return;
         }
         
         if ([self respondsToSelector:@selector(superview)] && [[self superview] isKindOfClass: MDCCellClass]) {
-            id superview = [self superview];
+            __weak id superview = [self superview];
             if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
                 [imageViewSuggestSet addObject: self];
                 UIImage* img = handleSuggestionCell(self, arg, superview);
@@ -620,7 +620,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         return tab;
     }
     - (void)webStateDestroyed:(id)ws {
-        id tab = (id)self;
+        __weak id tab = (id)self;
         NSNumber *t = @((NSInteger)tab);
         if (fakeLocBars[t]) {
             [fakeLocBars removeObjectForKey:t];
@@ -697,15 +697,15 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
             [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent:0.2]];
             [fakeLocBars[activeTabID] setFakeBox:arg];
-            id veff = [[arg subviews] objectAtIndex:0];
+            __weak id veff = [[arg subviews] objectAtIndex:0];
             [fakeLocBars[activeTabID] setMainVisualEffect:veff];
             headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
             [veff setBackgroundColor: [blurColor colorWithAlphaComponent:0.1]];
             if ([[veff subviews] count] >= 2) {
                 [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
                 [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
-                id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-                id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+                __weak id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+                __weak id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
                 [[sub1 layer] setCornerRadius:locBarCornerRadius];
                 [[sub2 layer] setCornerRadius:locBarCornerRadius];
                 [[veff layer] setCornerRadius:locBarCornerRadius];
@@ -746,8 +746,8 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         [fakeLocBars[activeTabID] setOldHeight: c];
         if (delta != 0) {
             UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
-            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            __weak id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+            __weak id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
             [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent: alphaOffset]];
             [main setBackgroundColor: [blurColor colorWithAlphaComponent: alphaDelta]];
             [[main layer] setCornerRadius:radiusDelta];
@@ -831,7 +831,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook PopupMenuViewController
     - (void)setUpContentContainer {
         %orig;
-        id cont = [self contentContainer];
+        __weak id cont = [self contentContainer];
         for (id v in [cont subviews]) {
             if ([v isKindOfClass:visEffectViewClass]) {
                 [v setHidden:true];
@@ -1014,7 +1014,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         [blur setBackgroundColor: blurColor];
     }
     -(id)blur {
-        id ret = %orig;
+        __weak id ret = %orig;
         if (ret != nil) {
             [ret setBackgroundColor: blurColor];
         }
