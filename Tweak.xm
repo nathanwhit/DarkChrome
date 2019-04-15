@@ -34,7 +34,7 @@ CGFloat alphaOffset;
 %ctor {
     #if INSPECT==1
     // watchClass(%c(FormSuggestionView));
-    watchSelector(@selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
+    watchClass(%c(TableViewURLCell));
     #endif
 
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
@@ -405,8 +405,11 @@ static CGFloat locBarCornerRadius = 25;
 
     -(void)configureUILayout {
         %orig;
-        UIStackView* stack = [self horizontalStack];
-        for (id v in [stack arrangedSubviews]) {
+        __weak UIStackView* stack = [self horizontalStack];
+        if (![stack arrangedSubviews] || [[stack arrangedSubviews] count] < 1) {
+            return;
+        }
+        for (__weak id v in [stack arrangedSubviews]) {
             if ([v isKindOfClass:[UIStackView class]]) {
                 for (UILabel* lab in [v arrangedSubviews]) {
                     [lab setBackgroundColor:clear];
