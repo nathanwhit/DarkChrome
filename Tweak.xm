@@ -40,8 +40,8 @@ CGFloat alphaOffset;
     bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:nil];
         if  (prefsInitialized) {
             if (@available(iOS 11, *)) {
-            NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
-            preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
+                NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
+                preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
             }
             else {
                 preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
@@ -139,6 +139,16 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25; 
+
+// FIND BAR UI
+%hook FindBarView
+    - (void)setDarkMode:(BOOL)arg {
+        %orig(true);
+    }
+    - (id)initWithDarkAppearance:(BOOL)arg {
+        return %orig(true);
+    }
+%end
 
 // VOICE SEARCH UI
 %hook GSKGlifVoiceSearchContainerView
