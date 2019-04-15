@@ -179,6 +179,13 @@ static CGFloat locBarCornerRadius = 25;
 
 // KEYBOARD
 
+
+%hook UIKBRenderConfig
+    - (void)setLightKeyboard:(BOOL)arg {
+        %orig(false);
+    }
+%end
+
 %hook OmniboxTextFieldIOS
     - (id)initWithFrame:(CGRect)arg1 textColor:(id)arg2 tintColor:(id)arg3 {
         id ret = %orig;
@@ -673,14 +680,20 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             [fakeLocBars[activeTabID] setMainVisualEffect:veff];
             headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
             [veff setBackgroundColor: [blurColor colorWithAlphaComponent:0.1]];
-            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
-            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
-            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-            [[veff layer] setCornerRadius:locBarCornerRadius];
-            [[sub1 layer] setCornerRadius:locBarCornerRadius];
-            [[sub2 layer] setCornerRadius:locBarCornerRadius];
-            [fakeLocBars[activeTabID] setNeedsInitialization: false];
+            if ([[veff subviews] count] >= 2) {
+                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
+                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
+                id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+                id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+                [[sub1 layer] setCornerRadius:locBarCornerRadius];
+                [[sub2 layer] setCornerRadius:locBarCornerRadius];
+                [[veff layer] setCornerRadius:locBarCornerRadius];
+                [fakeLocBars[activeTabID] setNeedsInitialization: false];
+            }
+            else {
+                [[veff layer] setCornerRadius:locBarCornerRadius];
+                [fakeLocBars[activeTabID] setNeedsInitialization: true];
+            }
         }
     }
     
@@ -930,6 +943,15 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %hook OverscrollActionsView
     - (void)setStyle:(NSInteger)arg {
         %orig(1);
+    }
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(bg);
+    }
+%end
+
+%hook WKScrollView
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(bg);
     }
 %end
 
