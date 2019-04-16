@@ -332,8 +332,11 @@ static CGFloat locBarCornerRadius = 25;
 %hook TableViewImageItem
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
-        [[arg1 titleLabel] setBackgroundColor:clear];
-        [[arg1 titleLabel] setTextColor:txt];
+        if ([arg1 respondsToSelector:@selector(titleLabel)]) {
+            [[arg1 titleLabel] setBackgroundColor:clear];
+            [[arg1 titleLabel] setTextColor:txt];
+        }
+        
         [[arg1 imageView] setBackgroundColor:clear];
     }
 %end
