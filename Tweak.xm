@@ -1035,7 +1035,6 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
     - (void)setConfiguration:(ToolbarConfiguration*)config {
         %orig;
         if ([[config incognito] boolValue] == true) {
-            // [config setButtonsTintColor:bg];
             [[(ToolbarSearchButton*)self imageView] setImage:[(UIImage*)[[(ToolbarSearchButton*)self imageView] image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
             [[(ToolbarSearchButton*)self imageView] setTintColor: bg];
             [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: white];
