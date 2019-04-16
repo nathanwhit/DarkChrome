@@ -20,8 +20,6 @@ CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
 __weak BrowserViewWrangler *wrangler; 
-bool coldStart;
-bool firstTabSeen;
 CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
@@ -113,10 +111,7 @@ CGFloat alphaOffset;
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
-    wrangler=nil;
-    coldStart = false;
-    firstTabSeen = false;
-    
+    wrangler=nil; 
 }
 
 // COLORS
@@ -241,9 +236,6 @@ static CGFloat locBarCornerRadius = 25;
     - (void)createMainBrowser {
         %orig;
         wrangler = (BrowserViewWrangler*)self;
-        if (firstTabSeen == false) {
-            coldStart = [[(MainApplicationDelegate*)[[UIApplication sharedApplication] delegate] mainController] isColdStart];
-        }
     }
 %end
 
@@ -430,11 +422,6 @@ static CGFloat locBarCornerRadius = 25;
     -(void)setBackgroundColor:(id)arg {
         %orig(fg);
     }
-
-    -(void)configureUILayout {
-        %orig;
-        
-    }
 %end
     
     //  CONTENT SUGGESTIONS/NEW TAB PAGE
@@ -604,8 +591,8 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
 @end
 
 static NSNumber* activeTabID = nil;
-static NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
-static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
+static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
+static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
 
 %hook TabGridViewController
     -(void)setView:(id)arg {
@@ -621,16 +608,18 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %hook Tab
     - (id)initWithWebState:(id)ws {
-        id tab = %orig;
+        __strong id tab = %orig;
+        if (tab == nil) {
+            return tab;
+        }
         NSNumber *t = @((NSInteger)tab);
         if (fakeLocBars == nil) {
             fakeLocBars = [[NSMutableDictionary alloc] init];
         }
-        if (!fakeLocBars[t]) {
-            fakeLocBars[t] = [[FakeLocationBar alloc] init];
-        }
-        else {
-            [fakeLocBars[t] needsReInit];
+        if (t != nil) {
+            if (!fakeLocBars[t]) {
+                fakeLocBars[t] = [[FakeLocationBar alloc] init];
+            }
         }
         return tab;
     }
@@ -646,13 +635,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook BrowserViewController
     - (void)displayTab:(id)tab {
-        if (coldStart && firstTabSeen) {
-            coldStart = false;
-            %orig;
-            return;
-        }
         NSNumber *t = @((NSInteger)tab);
-        firstTabSeen = true;
         if (t != nil) {
             activeTabID = t;
             if (!fakeLocBars[activeTabID]) {
@@ -664,19 +647,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %end
         
 %hook TabModel
-    - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
-        BOOL ret = %orig;
-        if ([self currentTab] != nil) {
-            activeTabID = @((NSInteger)[self currentTab]);
-            if (fakeLocBars == nil) {
-                fakeLocBars = [[NSMutableDictionary alloc] init];
-            }
-        }
-        for (NSUInteger i = 0; i < [self count]; i++) {
-            fakeLocBars[@((NSInteger)[self tabAtIndex:i])] = [[FakeLocationBar alloc] init];
-        }
-        return ret;
-    }
     - (void)applicationDidEnterBackground {
         %orig;
         for (NSNumber* tabID in fakeLocBars) {
