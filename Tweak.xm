@@ -138,12 +138,33 @@ static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 static CGFloat locBarCornerRadius = 25; 
 
 // FIND BAR UI
+
 %hook FindBarView
     - (void)setDarkMode:(BOOL)arg {
         %orig(true);
     }
     - (id)initWithDarkAppearance:(BOOL)arg {
         return %orig(true);
+    }
+    - (BOOL)darkMode {
+        return true;
+    }
+%end
+
+%hook FindBarControllerIOS
+    - (void)setIsIncognito:(BOOL)arg {
+        %orig(true);
+    }
+    - (BOOL)isIncognito {
+        return true;
+    }
+    - (id)initWithIncognito:(BOOL)arg {
+        id cont = %orig(true);
+        return cont;
+    }
+    - (void)setView:(UIView*)arg {
+        [arg setBackgroundColor:altfg];
+        %orig(arg);
     }
 %end
 
