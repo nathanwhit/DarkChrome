@@ -299,7 +299,33 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 //     }
 // %end
 
+%hook FormSuggestionLabel
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(kbSuggestColor);
+    }
 
+    - (FormSuggestionLabel*)initWithSuggestion:(id)arg1 index:(NSUInteger)arg2 userInteractionEnabled:(BOOL)arg3 numSuggestions:(NSUInteger)arg4 client:(id)arg5 {
+        __strong FormSuggestionLabel* suggest = %orig;
+        if ([[suggest subviews] count] < 1) {
+            return suggest;
+        }
+        if (![[[suggest subviews] objectAtIndex:0] isKindOfClass:%c(UIStackView)]) {
+            return suggest;
+        }
+        __weak UIStackView* stack = reinterpret_cast<UIStackView*>([[suggest subviews] objectAtIndex:0]);
+        if ([[stack arrangedSubviews] count] < 1) {
+            return suggest;
+        }
+        __weak id lbl = [[stack arrangedSubviews] objectAtIndex:0];
+        if (![lbl isKindOfClass:%c(UILabel)]) {
+            return suggest;
+        }
+        __weak UILabel *label = reinterpret_cast<UILabel*>(lbl);
+        [label setTextColor:txt];
+        return suggest;
+
+    }
+%end
 
 %hook FormInputAccessoryView
     - (void)setUpWithLeadingView:(id)arg1 navigationDelegate:(id)arg2 {

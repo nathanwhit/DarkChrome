@@ -1,6 +1,9 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface FormSuggestionLabel : UIView
+@end
+
 @interface AutofillEditAccessoryView : UIView
 @property (strong) UIButton *nextButton;
 @property (strong) UIButton *previousButton;
