@@ -1,6 +1,32 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface FormSuggestionLabel : UIView
+@end
+
+@interface AutofillEditAccessoryView : UIView
+@property (strong) UIButton *nextButton;
+@property (strong) UIButton *previousButton;
+@end
+
+@interface UIImageView (keyb)
+@property (nonatomic, readwrite, getter=_ancestorDefinesTintColor, setter=_setAncestorDefinesTintColor:) BOOL _ancestorDefinesTintColor;
+@end
+
+@interface FindBarControllerIOS
+@property (strong) UIView *view;
+@end
+
+@interface FormInputAccessoryView
+@property (strong) UIView *leadingView;
+@property (strong) UIButton *nextButton;
+@property (strong) UIButton *previousButton;
+@end
+
+@interface OverscrollActionsView
+@property (strong) UIColor *backgroundColor;
+@end
+
 @interface GSKGlifVoiceSearchContainerView
 @property (strong) UIColor *backgroundColor;
 @end
@@ -147,14 +173,14 @@
 
 @end
 
-@interface ChromeTableViewStyler
-- (id)init;
-- (void)setCellBackgroundColor:(id)arg;
-- (void)setTableViewBackgroundColor:(id)arg;
-- (void)setTableViewSectionHeaderBlurEffect:(id)arg;
-- (id)tableViewSectionHeaderBlurEffect;
-- (void)setCellTitleColor:(id)arg;
-- (void)setCellSeparatorColor:(id)arg;
+@interface ChromeTableViewStyler : NSObject
+@property (nonatomic, strong) UIColor *cellBackgroundColor;
+@property (nonatomic, strong) UIColor *tableViewBackgroundColor;
+@property (nonatomic, strong) UIBlurEffect *tableViewSectionHeaderBlurEffect;
+@property (nonatomic, strong) UIColor *cellTitleColor;
+@property (nonatomic, strong) UIColor *cellSeparatorColor;
+
+@property (nonatomic, assign) BOOL isPopupMenuStyler;
 @end
 
 @interface SettingsDetailCell
@@ -192,7 +218,7 @@
 @interface RecentTabsTableViewController : BookmarkHomeViewController
 @end
 
-@interface TableViewURLCell
+@interface TableViewURLCell : UIView
 - (UILabel*)URLLabel;
 - (UILabel*)titleLabel;
 - (void)setHorizontalStack:(id)arg;

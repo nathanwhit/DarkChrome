@@ -1,6 +1,14 @@
+#define INSPECT 1
+
+#include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
+
+#define log(str) os_log(OS_LOG_DEFAULT, str)
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+
+#define RESOURCEPATH @"/Library/Application Support/com.nwhit.darkchromebund.bundle"
 
 NSDictionary *preferences;
 NSString* chosenScheme;
@@ -14,20 +22,39 @@ CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
 __weak BrowserViewWrangler *wrangler; 
-bool coldStart;
-bool firstTabSeen;
 CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
 
+NSBundle *resBundle;
 
-%ctor {    
+#if INSPECT==1
+#include "InspCWrapper.m"
+#endif
+
+
+%ctor {
+    #if INSPECT==1
+    // watchClass(%c(FormSuggestionView));
+    watchClass(%c(TableViewURLCell));
+    #endif
+
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
-    bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:nil];
-        if  (prefsInitialized) {
+    bool bundleExists = [[NSFileManager defaultManager] fileExistsAtPath:RESOURCEPATH isDirectory:nil];
+    if (bundleExists) {
+        resBundle = [[NSBundle alloc] initWithPath:RESOURCEPATH];
+    }
+    else {
+        resBundle = nil;
+        log("BUNDLE DOES NOT CURRENTLY EXIST IN FILESYSTEM");
+    }
+    NSError* errorThrown;
+    BOOL isDir;
+    bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:&isDir];
+        if  (prefsInitialized && !isDir) {
             if (@available(iOS 11, *)) {
-            NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
-            preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:nil];
+                NSURL * prefsURL = [[NSURL alloc] initFileURLWithPath:prefsPath isDirectory:false];
+                preferences = [[NSDictionary alloc] initWithContentsOfURL:prefsURL error:&errorThrown];
             }
             else {
                 preferences = [[NSDictionary alloc] initWithContentsOfFile:prefsPath];
@@ -48,7 +75,6 @@ CGFloat alphaOffset;
     UIColor* black_color1 = [UIColor colorWithWhite:0 alpha: 1];
     UIColor* black_color2 = [UIColor colorWithRed:0.1 green:0.1 blue:0.1 alpha:1];
     UIColor* black_color4 = [UIColor colorWithWhite:0.3 alpha: 0.6];
-    
     if (!preferences[@"useIncognitoIndicator"] || ![preferences[@"useIncognitoIndicator"] boolValue]) {
         useIncognitoIndicator = false;
     } else {
@@ -97,10 +123,7 @@ CGFloat alphaOffset;
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
-    wrangler=nil;
-    coldStart = false;
-    firstTabSeen = false;
-    
+    wrangler=nil; 
 }
 
 // COLORS
@@ -111,6 +134,8 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
 static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:0.9 alpha:0.5];
+static UIColor * kbColor = [UIColor colorWithWhite:0.18 alpha:1];
+static UIColor * kbSuggestColor = [UIColor colorWithWhite:0.25 alpha:1];
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
@@ -125,6 +150,111 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25; 
+
+// UTILITY
+@interface UIImage (ResizeCategory)
+- (UIImage*)imageWithSize:(CGSize)newSize;
+@end
+@implementation UIImage (ResizeCategory)
+- (UIImage*)imageWithSize:(CGSize)newSize
+{
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:newSize];
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext*_Nonnull myContext) {
+        [self drawInRect:(CGRect) {.origin = CGPointZero, .size = newSize}];
+    }];
+    return image;
+}
+@end
+
+static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize size, bool closeButton) {
+    NSString* imagePath = [resBundle pathForResource:name ofType:@"png"];
+    if (size.height == 0 && size.width == 0) {
+        [button setBackgroundImage:[UIImage imageWithContentsOfFile:imagePath] forState:UIControlStateNormal];
+        UIImage *selectedImage = [UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_pressed"]];
+        [button setBackgroundImage:selectedImage forState:UIControlStateSelected];
+        [button setBackgroundImage:selectedImage forState:UIControlStateHighlighted];
+        if (!closeButton) {
+            [button setBackgroundImage:[UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_inactive"]] forState:UIControlStateDisabled];
+        }
+        return;
+    }
+    [button setBackgroundImage:[[UIImage imageWithContentsOfFile:imagePath] imageWithSize:size] forState:UIControlStateNormal];
+    UIImage *selectedImage = [[UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_pressed"]] imageWithSize:size];
+    [button setBackgroundImage:selectedImage forState:UIControlStateSelected];
+    [button setBackgroundImage:selectedImage forState:UIControlStateHighlighted];
+    if (!closeButton) {
+        [button setBackgroundImage:[[UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_inactive"]] imageWithSize:size] forState:UIControlStateDisabled];
+    }
+}
+
+// AUTOFILL UI
+%hook AutofillEditAccessoryView
+    -(void)setupSubviews {
+        %orig;
+        [self setBackgroundColor:kbColor];
+        if ([[self subviews] count] < 5) {
+            return;
+        }
+        CGRect bgFrame = [reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:0]) frame];
+        CGFloat buttonHeight = bgFrame.size.height;
+        CGFloat buttonWidth = buttonHeight;
+        CGSize buttonSize = CGSizeMake(buttonWidth, buttonHeight);
+        UIButton *button = [[self subviews] objectAtIndex: 4];
+        setButtonBackground(@"autofill_close", button, buttonSize, true);
+        button = [self nextButton];
+        setButtonBackground(@"autofill_next", button, buttonSize, false);
+        button = [self previousButton];
+        setButtonBackground(@"autofill_prev", button, buttonSize, false);
+        UIView *sepView = [[self subviews] objectAtIndex:2];
+        [sepView setHidden:true];
+        sepView = [[self subviews] objectAtIndex:5];
+        [sepView setHidden:true];
+    }
+    - (void)addBackgroundImage {
+        %orig;
+        if ([[self subviews] count] > 0) {
+            UIImage * img = [UIImage imageWithContentsOfFile: [resBundle pathForResource:@"autofill_keyboard_background" ofType:@"png"]];
+            // THE FOLLOWING CODE ADAPTED FROM THE CHROMIUM PROJECT, SEE LICENSE IN "EXTERNAL" FOLDER
+            double topInset = floor(img.size.height/2.0);
+            double leftInset = floor(img.size.width/2.0);
+            UIEdgeInsets insets = UIEdgeInsetsMake(topInset, leftInset, img.size.height-topInset+1.0, img.size.width-leftInset+1.0);
+            [[[self subviews] objectAtIndex:0] setImage: [img resizableImageWithCapInsets:insets]];
+            [[[self subviews] objectAtIndex:0] setBackgroundColor: kbColor];
+        }
+        [self setBackgroundColor:kbColor];
+    }
+%end
+
+// FIND BAR UI
+
+%hook FindBarView
+    - (void)setDarkMode:(BOOL)arg {
+        %orig(true);
+    }
+    - (id)initWithDarkAppearance:(BOOL)arg {
+        return %orig(true);
+    }
+    - (BOOL)darkMode {
+        return true;
+    }
+%end
+
+%hook FindBarControllerIOS
+    - (void)setIsIncognito:(BOOL)arg {
+        %orig(true);
+    }
+    - (BOOL)isIncognito {
+        return true;
+    }
+    - (id)initWithIncognito:(BOOL)arg {
+        id cont = %orig(true);
+        return cont;
+    }
+    - (void)setView:(UIView*)arg {
+        [arg setBackgroundColor:altfg];
+        %orig(arg);
+    }
+%end
 
 // VOICE SEARCH UI
 %hook GSKGlifVoiceSearchContainerView
@@ -154,6 +284,103 @@ static CGFloat locBarCornerRadius = 25;
 %end
 
 // KEYBOARD
+
+%hook FormSuggestionLabel
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(kbSuggestColor);
+    }
+
+    - (FormSuggestionLabel*)initWithSuggestion:(id)arg1 index:(NSUInteger)arg2 userInteractionEnabled:(BOOL)arg3 numSuggestions:(NSUInteger)arg4 client:(id)arg5 {
+        __strong FormSuggestionLabel* suggest = %orig;
+        if ([[suggest subviews] count] < 1) {
+            return suggest;
+        }
+        if (![[[suggest subviews] objectAtIndex:0] isKindOfClass:%c(UIStackView)]) {
+            return suggest;
+        }
+        __weak UIStackView* stack = reinterpret_cast<UIStackView*>([[suggest subviews] objectAtIndex:0]);
+        if ([[stack arrangedSubviews] count] < 1) {
+            return suggest;
+        }
+        __weak id lbl = [[stack arrangedSubviews] objectAtIndex:0];
+        if (![lbl isKindOfClass:%c(UILabel)]) {
+            return suggest;
+        }
+        __weak UILabel *label = reinterpret_cast<UILabel*>(lbl);
+        [label setTextColor:txt];
+        return suggest;
+
+    }
+%end
+
+%hook FormInputAccessoryView
+    - (void)setUpWithLeadingView:(id)arg1 navigationDelegate:(id)arg2 {
+        %orig;
+        __weak id v = [self leadingView];
+        [v setBackgroundColor:kbColor];
+        [v setOpaque:false];
+    }
+    - (void)setLeadingView:(id)arg {
+        %orig;
+        __weak id v = arg;
+        [v setBackgroundColor:kbColor];
+        [v setOpaque:false];
+    }
+
+    - (void)setUpWithLeadingView:(id)arg1 customTrailingView:(id)arg2 navigationDelegate:(id)arg3 {
+        %orig;
+        __weak id v = [self leadingView];
+        [v setBackgroundColor:kbColor];
+        [v setOpaque:false];
+    }
+
+    - (UIView*)viewForNavigationButtons {
+        UIView* v = %orig;
+        UIButton *button = [self nextButton];
+        CGSize size = CGSizeMake(0, 0);
+        setButtonBackground(@"autofill_next", button, size, false);
+        [button setBackgroundColor:kbColor];
+
+        button = [self previousButton];
+        setButtonBackground(@"autofill_prev", button, size, false);
+        [button setBackgroundColor:kbColor];
+
+        if ([[v subviews] count] < 5) {
+            return v;
+        }
+
+        button = [[v subviews] objectAtIndex: 5];
+        setButtonBackground(@"autofill_close", button, size, true);
+        [button setBackgroundColor:kbColor];
+
+        UIImageView *sepView = [[v subviews] objectAtIndex: 0];
+        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
+        sepView = [[v subviews] objectAtIndex: 2];
+        [sepView setHidden:true];
+        sepView = [[v subviews] objectAtIndex: 4];
+        [sepView setHidden:true];
+
+        [v setBackgroundColor: kbColor];
+        return v;
+    }
+
+%end
+
+%hook ToolbarKeyboardAccessoryView
+    - (UIView*)shortcutButtonWithTitle:(NSString*)title {
+        UIButton* button = (UIButton*)%orig;
+        [button setTitleColor:txt forState:UIControlStateNormal];
+        [button setTitleColor:detail forState:UIControlStateHighlighted];
+        return button;
+    }
+
+%end
+
+%hook UIKBRenderConfig
+    - (void)setLightKeyboard:(BOOL)arg {
+        %orig(false);
+    }
+%end
 
 %hook OmniboxTextFieldIOS
     - (id)initWithFrame:(CGRect)arg1 textColor:(id)arg2 tintColor:(id)arg3 {
@@ -192,9 +419,6 @@ static CGFloat locBarCornerRadius = 25;
     - (void)createMainBrowser {
         %orig;
         wrangler = (BrowserViewWrangler*)self;
-        if (firstTabSeen == false) {
-            coldStart = [[(MainApplicationDelegate*)[[UIApplication sharedApplication] delegate] mainController] isColdStart];
-        }
     }
 %end
 
@@ -216,20 +440,31 @@ static CGFloat locBarCornerRadius = 25;
 // TABLES
 %hook ChromeTableViewStyler
     - (id)init {
-        ChromeTableViewStyler * tblStyler = %orig;
+        ChromeTableViewStyler * tblStyler = reinterpret_cast<ChromeTableViewStyler*>(%orig);
         [tblStyler setTableViewSectionHeaderBlurEffect:[UIBlurEffect effectWithStyle:2]];
         [tblStyler setCellBackgroundColor:fg];
         [tblStyler setCellTitleColor:txt];
         [tblStyler setCellSeparatorColor:sep];
+        [tblStyler setTableViewBackgroundColor:bg];
         return tblStyler;
     }
     
     - (void)setTableViewBackgroundColor:(id)arg {
-        %orig(bg);
+        if ([self isPopupMenuStyler]==YES) {
+            %orig;
+        }
+        else {
+            %orig(bg);
+        }
     }
 
     - (void)setCellBackgroundColor:(id)arg {
-        %orig(fg);
+        if ([self isPopupMenuStyler]==YES) {
+            %orig;
+        }
+        else {
+            %orig(fg);
+        }
     }
 
     - (void)setCellTitleColor:(id)arg {
@@ -237,8 +472,14 @@ static CGFloat locBarCornerRadius = 25;
     }
 
     - (void)setCellSeparatorColor:(id)arg {
-        %orig(sep);
+        if ([self isPopupMenuStyler]==YES) {
+            %orig;
+        }
+        else {
+            %orig(sep);
+        }
     }
+    %property (nonatomic, assign) BOOL isPopupMenuStyler;
 %end
     
 %hook TableViewTextHeaderFooterView
@@ -270,8 +511,11 @@ static CGFloat locBarCornerRadius = 25;
 %hook TableViewImageItem
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
-        [[arg1 titleLabel] setBackgroundColor:clear];
-        [[arg1 titleLabel] setTextColor:txt];
+        if ([arg1 respondsToSelector:@selector(titleLabel)]) {
+            [[arg1 titleLabel] setBackgroundColor:clear];
+            [[arg1 titleLabel] setTextColor:txt];
+        }
+        
         [[arg1 imageView] setBackgroundColor:clear];
     }
 %end
@@ -340,7 +584,7 @@ static CGFloat locBarCornerRadius = 25;
         [[arg inkView] setBackgroundColor:clear];
         [[arg textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
         if ([arg isKindOfClass:settingsTextCellClass]) {
-            id separator = MSHookIvar<UIView*>(arg, "_separatorView");
+            __weak id separator = MSHookIvar<UIView*>(arg, "_separatorView");
             [separator setBackgroundColor:sep];
             [[arg accessoryView] setTintColor:white];
             [[arg accessoryView] setBackgroundColor:clear];
@@ -353,13 +597,15 @@ static CGFloat locBarCornerRadius = 25;
     -(void)setBackgroundColor:(id)arg {
         %orig(fg);
     }
-
-    -(void)configureUILayout {
-        %orig;
-        UIStackView* stack = [self horizontalStack];
-        for (id v in [stack arrangedSubviews]) {
-            if ([v isKindOfClass:[UIStackView class]]) {
-                for (UILabel* lab in [v arrangedSubviews]) {
+    - (void)configureUILayout {
+        if (![self respondsToSelector:@selector(horizontalStack)]) {
+            %orig;
+            return;
+        }
+        __weak UIStackView* stack = [self horizontalStack];
+        for (__weak id v in [stack arrangedSubviews]) {
+            if ([v isKindOfClass:%c(UIStackView)]) {
+                for (__weak UILabel* lab in [v arrangedSubviews]) {
                     [lab setBackgroundColor:clear];
                     [lab setTextColor:txt];
                 }
@@ -368,8 +614,13 @@ static CGFloat locBarCornerRadius = 25;
                 [v setTextColor:txt];
             }
         }
-        [self setHorizontalStack: stack];
-        [[self faviconContainerView] setBackgroundColor:fg];
+        if (stack) {
+            [self setHorizontalStack: stack];
+        }
+        if ([self respondsToSelector:@selector(faviconContainerView)]) {
+            [[self faviconContainerView] setBackgroundColor:fg];
+        }
+        %orig;
     }
 %end
     
@@ -377,7 +628,7 @@ static CGFloat locBarCornerRadius = 25;
 
 %hook ContentSuggestionsViewController
     - (id)collectionView {
-        id v = %orig;
+        __weak id v = %orig;
         [v setBackgroundColor:bg];
         return v;
     }
@@ -387,7 +638,7 @@ static CGFloat locBarCornerRadius = 25;
     - (id)initWithFrame:(CGRect)arg {
         id tile = %orig;
         [[tile titleLabel] setTextColor:white];
-        id imgView = [tile imageBackgroundView];
+        __weak id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
         [imgView setTintColor: altfg];
         return tile;
@@ -398,7 +649,7 @@ static CGFloat locBarCornerRadius = 25;
     - (id)initWithFrame:(CGRect)arg {
         id tile = %orig;
         [[tile titleLabel] setTextColor:white];
-        id imgView = [tile imageBackgroundView];
+        __weak id imgView = [tile imageBackgroundView];
         [imgView setImage: [(UIImage*)[imgView image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
         [imgView setTintColor: altfg];
         return tile;
@@ -408,7 +659,7 @@ static CGFloat locBarCornerRadius = 25;
 %hook ContentSuggestionsArticlesHeaderCell
     - (void)drawSeparatorIfNeeded {
         %orig;
-        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        __weak id separator = MSHookIvar<UIView*>(self, "_separatorView");
         [separator setBackgroundColor:sep];
     }
     - (void)configureCell:(id)cell {
@@ -424,7 +675,7 @@ static CGFloat locBarCornerRadius = 25;
     }
     - (void)drawSeparatorIfNeeded {
         %orig;
-        id separator = MSHookIvar<UIView*>(self, "_separatorView");
+        __weak id separator = MSHookIvar<UIView*>(self, "_separatorView");
         [separator setBackgroundColor:sep];
     }
 %end
@@ -433,7 +684,7 @@ static NSMutableSet *imageViewPassSet = [[NSMutableSet alloc] init];
 static NSMutableSet *imageViewSuggestSet = [[NSMutableSet alloc] init];
 static NSMutableSet *imageViewSettingsSet = [[NSMutableSet alloc] init];
 
-static UIImage* handleSuggestionCell(id cell, id image, id superview) {
+static UIImage* handleSuggestionCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [cell setTintColor: altfg];
     if ([superview isKindOfClass:settingsTextCellClass] && [[cell interactionTintColor] isEqual:altfg]) {
@@ -443,7 +694,7 @@ static UIImage* handleSuggestionCell(id cell, id image, id superview) {
     return img;
 }
 
-static UIImage* handleSettingsCell(id cell, id image, id superview) {
+static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [cell setTintColor: fg];
     if ([[cell interactionTintColor] isEqual:fg]) {
@@ -465,14 +716,14 @@ static UIImage* handleSettingsCell(id cell, id image, id superview) {
             return;
         }
         else if ([imageViewSettingsSet containsObject: self]) {
-            id superview = [self superview];
+            __weak id superview = [self superview];
             UIImage* img = handleSettingsCell(self, arg, superview);
             %orig(img);
             return;
         }
         
         if ([self respondsToSelector:@selector(superview)] && [[self superview] isKindOfClass: MDCCellClass]) {
-            id superview = [self superview];
+            __weak id superview = [self superview];
             if ([superview isKindOfClass:articlesHeaderCellClass] || [superview isKindOfClass:suggestCellClass] || [superview isKindOfClass:suggestFooterClass]) {
                 [imageViewSuggestSet addObject: self];
                 UIImage* img = handleSuggestionCell(self, arg, superview);
@@ -540,8 +791,8 @@ static UIImage* handleSettingsCell(id cell, id image, id superview) {
 @end
 
 static NSNumber* activeTabID = nil;
-static NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
-static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
+static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
+static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
 
 %hook TabGridViewController
     -(void)setView:(id)arg {
@@ -557,18 +808,23 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %hook Tab
     - (id)initWithWebState:(id)ws {
-        id tab = %orig;
-        NSNumber *t = @((NSInteger)tab);
-        if (!fakeLocBars[t]) {
-            fakeLocBars[t] = [[FakeLocationBar alloc] init];
+        __strong id tab = %orig;
+        if (tab == nil) {
+            return tab;
         }
-        else {
-            [fakeLocBars[t] needsReInit];
+        NSNumber *t = @((NSInteger)tab);
+        if (fakeLocBars == nil) {
+            fakeLocBars = [[NSMutableDictionary alloc] init];
+        }
+        if (t != nil) {
+            if (!fakeLocBars[t]) {
+                fakeLocBars[t] = [[FakeLocationBar alloc] init];
+            }
         }
         return tab;
     }
     - (void)webStateDestroyed:(id)ws {
-        id tab = (id)self;
+        __weak id tab = (id)self;
         NSNumber *t = @((NSInteger)tab);
         if (fakeLocBars[t]) {
             [fakeLocBars removeObjectForKey:t];
@@ -579,13 +835,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 
 %hook BrowserViewController
     - (void)displayTab:(id)tab {
-        if (coldStart && firstTabSeen) {
-            coldStart = false;
-            %orig;
-            return;
-        }
         NSNumber *t = @((NSInteger)tab);
-        firstTabSeen = true;
         if (t != nil) {
             activeTabID = t;
             if (!fakeLocBars[activeTabID]) {
@@ -597,19 +847,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
 %end
         
 %hook TabModel
-    - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
-        BOOL ret = %orig;
-        if ([self currentTab] != nil) {
-            activeTabID = @((NSInteger)[self currentTab]);
-            if (fakeLocBars == nil) {
-                fakeLocBars = [[NSMutableDictionary alloc] init];
-            }
-        }
-        for (NSUInteger i = 0; i < [self count]; i++) {
-            fakeLocBars[@((NSInteger)[self tabAtIndex:i])] = [[FakeLocationBar alloc] init];
-        }
-        return ret;
-    }
     - (void)applicationDidEnterBackground {
         %orig;
         for (NSNumber* tabID in fakeLocBars) {
@@ -645,18 +882,24 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
             [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent:0.2]];
             [fakeLocBars[activeTabID] setFakeBox:arg];
-            id veff = [[arg subviews] objectAtIndex:0];
+            __weak id veff = [[arg subviews] objectAtIndex:0];
             [fakeLocBars[activeTabID] setMainVisualEffect:veff];
             headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
             [veff setBackgroundColor: [blurColor colorWithAlphaComponent:0.1]];
-            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
-            [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
-            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-            [[veff layer] setCornerRadius:locBarCornerRadius];
-            [[sub1 layer] setCornerRadius:locBarCornerRadius];
-            [[sub2 layer] setCornerRadius:locBarCornerRadius];
-            [fakeLocBars[activeTabID] setNeedsInitialization: false];
+            if ([[veff subviews] count] >= 2) {
+                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
+                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
+                __weak id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+                __weak id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+                [[sub1 layer] setCornerRadius:locBarCornerRadius];
+                [[sub2 layer] setCornerRadius:locBarCornerRadius];
+                [[veff layer] setCornerRadius:locBarCornerRadius];
+                [fakeLocBars[activeTabID] setNeedsInitialization: false];
+            }
+            else {
+                [[veff layer] setCornerRadius:locBarCornerRadius];
+                [fakeLocBars[activeTabID] setNeedsInitialization: true];
+            }
         }
     }
     
@@ -678,7 +921,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             return bh;
         }
-        if ([fakeLocBars[activeTabID] needsInitialization]) {
+        if ([fakeLocBars[activeTabID] needsInitialization] || [[fakeLocBars[activeTabID] effectViews] count] < 2) {
             return bh;
         }        
         CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
@@ -688,8 +931,8 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         [fakeLocBars[activeTabID] setOldHeight: c];
         if (delta != 0) {
             UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
-            id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            __weak id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
+            __weak id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
             [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent: alphaOffset]];
             [main setBackgroundColor: [blurColor colorWithAlphaComponent: alphaDelta]];
             [[main layer] setCornerRadius:radiusDelta];
@@ -704,11 +947,13 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     }
     
     - (void)dealloc {
+        log("ContentHeaderSuggestionsView dealloced");
         NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
         if (headerViews[hsh]) {
             [headerViews[hsh] needsReInit];
             [headerViews removeObjectForKey:hsh];
         }
+        logf("%{public}@", [fakeLocBars description]);
         %orig;
     }
     
@@ -759,20 +1004,44 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     
 %end
     
+static __strong ChromeTableViewStyler *popupStyler;
+static dispatch_once_t popupStylerToken;
     // POPUP MENU
 %hook PopupMenuTableViewController
     - (id)init {
         id cont = %orig;
-        [[cont tableView] setBackgroundColor: fg];
+        [[cont tableView] setBackgroundColor: altfg];
         return cont;
+    }
+    - (void)setStyler:(ChromeTableViewStyler*)styler {
+        dispatch_once(&popupStylerToken, ^{
+            popupStyler = [[%c(ChromeTableViewStyler) alloc] init];
+            [popupStyler setIsPopupMenuStyler:YES];
+            [popupStyler setCellBackgroundColor:altfg];
+            [popupStyler setTableViewBackgroundColor:altfg];
+            [popupStyler setCellSeparatorColor:altfg];
+            [[self tableView] setBackgroundColor:altfg];
+        });
+        %orig(popupStyler);
+    }
+    - (ChromeTableViewStyler*)styler {
+        dispatch_once(&popupStylerToken, ^{
+            popupStyler = [[%c(ChromeTableViewStyler) alloc] init];
+            [popupStyler setIsPopupMenuStyler:YES];
+            [popupStyler setCellBackgroundColor:altfg];
+            [popupStyler setTableViewBackgroundColor:altfg];
+            [popupStyler setCellSeparatorColor:altfg];
+            [[self tableView] setBackgroundColor:altfg];
+        });
+        return popupStyler;
     }    
 %end
     
 %hook PopupMenuViewController
     - (void)setUpContentContainer {
         %orig;
-        id cont = [self contentContainer];
-        for (id v in [cont subviews]) {
+        __weak id cont = [self contentContainer];
+        for (__weak id v in [cont subviews]) {
             if ([v isKindOfClass:visEffectViewClass]) {
                 [v setHidden:true];
             }
@@ -907,6 +1176,15 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     - (void)setStyle:(NSInteger)arg {
         %orig(1);
     }
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(bg);
+    }
+%end
+
+%hook WKScrollView
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(bg);
+    }
 %end
 
 %hook ToolbarConfiguration
@@ -945,7 +1223,7 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
         [blur setBackgroundColor: blurColor];
     }
     -(id)blur {
-        id ret = %orig;
+        __weak id ret = %orig;
         if (ret != nil) {
             [ret setBackgroundColor: blurColor];
         }
@@ -957,7 +1235,6 @@ static NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutab
     - (void)setConfiguration:(ToolbarConfiguration*)config {
         %orig;
         if ([[config incognito] boolValue] == true) {
-            // [config setButtonsTintColor:bg];
             [[(ToolbarSearchButton*)self imageView] setImage:[(UIImage*)[[(ToolbarSearchButton*)self imageView] image] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
             [[(ToolbarSearchButton*)self imageView] setTintColor: bg];
             [[(ToolbarSearchButton*)self spotlightView] setBackgroundColor: white];
