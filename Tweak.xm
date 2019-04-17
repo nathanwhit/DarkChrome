@@ -8,6 +8,8 @@
 #define log(str) os_log(OS_LOG_DEFAULT, str)
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 
+#define RESOURCEPATH @"/Library/Application Support/com.nwhit.darkchromebund.bundle"
+
 NSDictionary *preferences;
 NSString* chosenScheme;
 UIColor * bg;
@@ -24,6 +26,8 @@ CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
 
+NSBundle *resBundle;
+
 #if INSPECT==1
 #include "InspCWrapper.m"
 #endif
@@ -36,6 +40,14 @@ CGFloat alphaOffset;
     #endif
 
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
+    bool bundleExists = [[NSFileManager defaultManager] fileExistsAtPath:RESOURCEPATH isDirectory:nil];
+    if (bundleExists) {
+        resBundle = [[NSBundle alloc] initWithPath:RESOURCEPATH];
+    }
+    else {
+        resBundle = nil;
+        log("BUNDLE DOES NOT CURRENTLY EXIST IN FILESYSTEM");
+    }
     NSError* errorThrown;
     BOOL isDir;
     bool prefsInitialized = [[NSFileManager defaultManager] fileExistsAtPath:prefsPath isDirectory:&isDir];
@@ -122,6 +134,7 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
 static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:0.9 alpha:0.5];
+static UIColor * kbColor = [UIColor colorWithRed:0.15 green:0.17 blue:0.17 alpha:1];
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
@@ -136,6 +149,81 @@ static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25; 
+
+// UTILITY
+@interface UIImage (ResizeCategory)
+- (UIImage*)imageWithSize:(CGSize)newSize;
+@end
+@implementation UIImage (ResizeCategory)
+- (UIImage*)imageWithSize:(CGSize)newSize
+{
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:newSize];
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext*_Nonnull myContext) {
+        [self drawInRect:(CGRect) {.origin = CGPointZero, .size = newSize}];
+    }];
+    return image;
+}
+@end
+
+static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize size, bool closeButton) {
+    NSString* imagePath = [resBundle pathForResource:name ofType:@"png"];
+    if (size.height == 0 && size.width == 0) {
+        [button setBackgroundImage:[UIImage imageWithContentsOfFile:imagePath] forState:UIControlStateNormal];
+        UIImage *selectedImage = [UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_pressed"]];
+        [button setBackgroundImage:selectedImage forState:UIControlStateSelected];
+        [button setBackgroundImage:selectedImage forState:UIControlStateHighlighted];
+        if (!closeButton) {
+            [button setBackgroundImage:[UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_inactive"]] forState:UIControlStateDisabled];
+        }
+        return;
+    }
+    [button setBackgroundImage:[[UIImage imageWithContentsOfFile:imagePath] imageWithSize:size] forState:UIControlStateNormal];
+    UIImage *selectedImage = [[UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_pressed"]] imageWithSize:size];
+    [button setBackgroundImage:selectedImage forState:UIControlStateSelected];
+    [button setBackgroundImage:selectedImage forState:UIControlStateHighlighted];
+    if (!closeButton) {
+        [button setBackgroundImage:[[UIImage imageWithContentsOfFile:[imagePath stringByAppendingString:@"_inactive"]] imageWithSize:size] forState:UIControlStateDisabled];
+    }
+}
+
+// AUTOFILL UI
+%hook AutofillEditAccessoryView
+    -(void)setupSubviews {
+        %orig;
+        [self setBackgroundColor:kbColor];
+        if ([[self subviews] count] < 5) {
+            return;
+        }
+        CGRect bgFrame = [reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:0]) frame];
+        CGFloat buttonHeight = bgFrame.size.height;
+        CGFloat buttonWidth = buttonHeight;
+        CGSize buttonSize = CGSizeMake(buttonWidth, buttonHeight);
+        UIButton *button = [[self subviews] objectAtIndex: 4];
+        setButtonBackground(@"autofill_close", button, buttonSize, true);
+        button = [self nextButton];
+        setButtonBackground(@"autofill_next", button, buttonSize, false);
+        button = [self previousButton];
+        setButtonBackground(@"autofill_prev", button, buttonSize, false);
+        CGSize sepSize = CGSizeMake(1, buttonHeight);
+        UIImageView *sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:2]);
+        [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]] imageWithSize:sepSize]];
+        sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:5]);
+        [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]] imageWithSize:sepSize]];
+    }
+    - (void)addBackgroundImage {
+        %orig;
+        if ([[self subviews] count] > 0) {
+            UIImage * img = [UIImage imageWithContentsOfFile: [resBundle pathForResource:@"autofill_keyboard_background" ofType:@"png"]];
+            // THE FOLLOWING CODE ADAPTED FROM THE CHROMIUM PROJECT, SEE LICENSE IN "EXTERNAL" FOLDER
+            double topInset = floor(img.size.height/2.0);
+            double leftInset = floor(img.size.width/2.0);
+            UIEdgeInsets insets = UIEdgeInsetsMake(topInset, leftInset, img.size.height-topInset+1.0, img.size.width-leftInset+1.0);
+            [[[self subviews] objectAtIndex:0] setImage: [img resizableImageWithCapInsets:insets]];
+            [[[self subviews] objectAtIndex:0] setBackgroundColor: kbColor];
+        }
+        [self setBackgroundColor:kbColor];
+    }
+%end
 
 // FIND BAR UI
 
@@ -206,12 +294,69 @@ static CGFloat locBarCornerRadius = 25;
 //     }
 // %end
 
+
+
 %hook FormInputAccessoryView
     - (void)setUpWithLeadingView:(id)arg1 navigationDelegate:(id)arg2 {
         %orig;
         __weak id v = [self leadingView];
-        [v setBackgroundColor:altfg];
+        [v setBackgroundColor:kbColor];
+        [v setOpaque:false];
     }
+    - (void)setLeadingView:(id)arg {
+        %orig;
+        __weak id v = arg;
+        [v setBackgroundColor:kbColor];
+        [v setOpaque:false];
+    }
+
+    - (void)setUpWithLeadingView:(id)arg1 customTrailingView:(id)arg2 navigationDelegate:(id)arg3 {
+        %orig;
+        __weak id v = [self leadingView];
+        [v setBackgroundColor:kbColor];
+        [v setOpaque:false];
+    }
+
+    - (UIView*)viewForNavigationButtons {
+        UIView* v = %orig;
+        UIButton *button = [self nextButton];
+        CGSize size = CGSizeMake(0, 0);
+        setButtonBackground(@"autofill_next", button, size, false);
+        [button setBackgroundColor:kbColor];
+
+        button = [self previousButton];
+        setButtonBackground(@"autofill_prev", button, size, false);
+        [button setBackgroundColor:kbColor];
+
+        if ([[v subviews] count] < 5) {
+            return v;
+        }
+
+        button = [[v subviews] objectAtIndex: 5];
+        setButtonBackground(@"autofill_close", button, size, true);
+        [button setBackgroundColor:kbColor];
+
+        UIImageView *sepView = [[v subviews] objectAtIndex: 0];
+        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_middle_sep" ofType:@"png"]]];
+        sepView = [[v subviews] objectAtIndex: 2];
+        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
+        sepView = [[v subviews] objectAtIndex: 4];
+        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]]];
+
+        [v setBackgroundColor: kbColor];
+        return v;
+    }
+
+%end
+
+%hook ToolbarKeyboardAccessoryView
+    - (UIView*)shortcutButtonWithTitle:(NSString*)title {
+        UIButton* button = (UIButton*)%orig;
+        [button setTitleColor:txt forState:UIControlStateNormal];
+        [button setTitleColor:detail forState:UIControlStateHighlighted];
+        return button;
+    }
+
 %end
 
 %hook UIKBRenderConfig

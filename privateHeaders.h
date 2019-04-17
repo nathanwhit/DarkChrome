@@ -1,8 +1,23 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+@interface AutofillEditAccessoryView : UIView
+@property (strong) UIButton *nextButton;
+@property (strong) UIButton *previousButton;
+@end
+
+@interface UIImageView (keyb)
+@property (nonatomic, readwrite, getter=_ancestorDefinesTintColor, setter=_setAncestorDefinesTintColor:) BOOL _ancestorDefinesTintColor;
+@end
+
+@interface FindBarControllerIOS
+@property (strong) UIView *view;
+@end
+
 @interface FormInputAccessoryView
 @property (strong) UIView *leadingView;
+@property (strong) UIButton *nextButton;
+@property (strong) UIButton *previousButton;
 @end
 
 @interface OverscrollActionsView
@@ -200,7 +215,7 @@
 @interface RecentTabsTableViewController : BookmarkHomeViewController
 @end
 
-@interface TableViewURLCell
+@interface TableViewURLCell : UIView
 - (UILabel*)URLLabel;
 - (UILabel*)titleLabel;
 - (void)setHorizontalStack:(id)arg;
