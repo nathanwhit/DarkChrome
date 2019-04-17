@@ -173,14 +173,14 @@
 
 @end
 
-@interface ChromeTableViewStyler : NSObject
-@property (nonatomic, strong) UIColor *cellBackgroundColor;
-@property (nonatomic, strong) UIColor *tableViewBackgroundColor;
-@property (nonatomic, strong) UIBlurEffect *tableViewSectionHeaderBlurEffect;
-@property (nonatomic, strong) UIColor *cellTitleColor;
-@property (nonatomic, strong) UIColor *cellSeparatorColor;
-
-@property (nonatomic, assign) BOOL isPopupMenuStyler;
+@interface ChromeTableViewStyler
+- (id)init;
+- (void)setCellBackgroundColor:(id)arg;
+- (void)setTableViewBackgroundColor:(id)arg;
+- (void)setTableViewSectionHeaderBlurEffect:(id)arg;
+- (id)tableViewSectionHeaderBlurEffect;
+- (void)setCellTitleColor:(id)arg;
+- (void)setCellSeparatorColor:(id)arg;
 @end
 
 @interface SettingsDetailCell

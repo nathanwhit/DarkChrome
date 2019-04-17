@@ -427,31 +427,20 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 // TABLES
 %hook ChromeTableViewStyler
     - (id)init {
-        ChromeTableViewStyler * tblStyler = reinterpret_cast<ChromeTableViewStyler*>(%orig);
+        ChromeTableViewStyler * tblStyler = %orig;
         [tblStyler setTableViewSectionHeaderBlurEffect:[UIBlurEffect effectWithStyle:2]];
         [tblStyler setCellBackgroundColor:fg];
         [tblStyler setCellTitleColor:txt];
         [tblStyler setCellSeparatorColor:sep];
-        [tblStyler setTableViewBackgroundColor:bg];
         return tblStyler;
     }
     
     - (void)setTableViewBackgroundColor:(id)arg {
-        if ([self isPopupMenuStyler]==YES) {
-            %orig;
-        }
-        else {
-            %orig(bg);
-        }
+        %orig(bg);
     }
 
     - (void)setCellBackgroundColor:(id)arg {
-        if ([self isPopupMenuStyler]==YES) {
-            %orig;
-        }
-        else {
-            %orig(fg);
-        }
+        %orig(fg);
     }
 
     - (void)setCellTitleColor:(id)arg {
@@ -459,14 +448,8 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 
     - (void)setCellSeparatorColor:(id)arg {
-        if ([self isPopupMenuStyler]==YES) {
-            %orig;
-        }
-        else {
-            %orig(sep);
-        }
+        %orig(sep);
     }
-    %property (nonatomic, assign) BOOL isPopupMenuStyler;
 %end
     
 %hook TableViewTextHeaderFooterView
@@ -989,36 +972,12 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
     
 %end
     
-static __strong ChromeTableViewStyler *popupStyler;
-static dispatch_once_t popupStylerToken;
     // POPUP MENU
 %hook PopupMenuTableViewController
     - (id)init {
         id cont = %orig;
-        [[cont tableView] setBackgroundColor: altfg];
+        [[cont tableView] setBackgroundColor: fg];
         return cont;
-    }
-    - (void)setStyler:(ChromeTableViewStyler*)styler {
-        dispatch_once(&popupStylerToken, ^{
-            popupStyler = [[%c(ChromeTableViewStyler) alloc] init];
-            [popupStyler setIsPopupMenuStyler:YES];
-            [popupStyler setCellBackgroundColor:altfg];
-            [popupStyler setTableViewBackgroundColor:altfg];
-            [popupStyler setCellSeparatorColor:altfg];
-            [[self tableView] setBackgroundColor:altfg];
-        });
-        %orig(popupStyler);
-    }
-    - (ChromeTableViewStyler*)styler {
-        dispatch_once(&popupStylerToken, ^{
-            popupStyler = [[%c(ChromeTableViewStyler) alloc] init];
-            [popupStyler setIsPopupMenuStyler:YES];
-            [popupStyler setCellBackgroundColor:altfg];
-            [popupStyler setTableViewBackgroundColor:altfg];
-            [popupStyler setCellSeparatorColor:altfg];
-            [[self tableView] setBackgroundColor:altfg];
-        });
-        return popupStyler;
     }    
 %end
     
@@ -1026,7 +985,7 @@ static dispatch_once_t popupStylerToken;
     - (void)setUpContentContainer {
         %orig;
         __weak id cont = [self contentContainer];
-        for (__weak id v in [cont subviews]) {
+        for (id v in [cont subviews]) {
             if ([v isKindOfClass:visEffectViewClass]) {
                 [v setHidden:true];
             }
