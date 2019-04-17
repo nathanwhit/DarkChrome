@@ -558,19 +558,20 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 %end
 
-%hook TableViewURLItem
-    - (void)configureCell:(id)cell withStyler:(id)styler {
-        %orig;
-        if (![cell respondsToSelector:@selector(horizontalStack)]) {
+%hook TableViewURLCell
+
+    -(void)setBackgroundColor:(id)arg {
+        %orig(fg);
+    }
+    - (void)configureUILayout {
+        if (![self respondsToSelector:@selector(horizontalStack)]) {
+            %orig;
             return;
         }
-        __weak UIStackView* stack = [cell horizontalStack];
-        if (![stack arrangedSubviews] || [[stack arrangedSubviews] count] < 1) {
-            return;
-        }
+        __weak UIStackView* stack = [self horizontalStack];
         for (__weak id v in [stack arrangedSubviews]) {
-            if ([v isKindOfClass:[UIStackView class]]) {
-                for (UILabel* lab in [v arrangedSubviews]) {
+            if ([v isKindOfClass:%c(UIStackView)]) {
+                for (__weak UILabel* lab in [v arrangedSubviews]) {
                     [lab setBackgroundColor:clear];
                     [lab setTextColor:txt];
                 }
@@ -579,17 +580,13 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
                 [v setTextColor:txt];
             }
         }
-        if ([cell respondsToSelector:@selector(horizontalStack)] && [cell respondsToSelector:@selector(faviconContainerView)]) {
-            [cell setHorizontalStack: stack];
-            [[cell faviconContainerView] setBackgroundColor:fg];
+        if (stack) {
+            [self setHorizontalStack: stack];
         }
-    }
-%end
-
-%hook TableViewURLCell
-
-    -(void)setBackgroundColor:(id)arg {
-        %orig(fg);
+        if ([self respondsToSelector:@selector(faviconContainerView)]) {
+            [[self faviconContainerView] setBackgroundColor:fg];
+        }
+        %orig;
     }
 %end
     
