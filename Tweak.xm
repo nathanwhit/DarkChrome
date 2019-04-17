@@ -205,15 +205,10 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         setButtonBackground(@"autofill_next", button, buttonSize, false);
         button = [self previousButton];
         setButtonBackground(@"autofill_prev", button, buttonSize, false);
-        // CGSize sepSize = CGSizeMake(1, buttonHeight);
-        // UIImageView *sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:2]);
         UIView *sepView = [[self subviews] objectAtIndex:2];
         [sepView setHidden:true];
-        // [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]] imageWithSize:sepSize]];
-        // sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:5]);
         sepView = [[self subviews] objectAtIndex:5];
         [sepView setHidden:true];
-        // [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]] imageWithSize:sepSize]];
     }
     - (void)addBackgroundImage {
         %orig;
@@ -290,15 +285,6 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 
 // KEYBOARD
 
-// %hook FormSuggestionView
-//     - (void)setBackgroundColor:(UIColor*)arg {
-//         %orig(altfg);
-//     }
-//     - (UIColor*)backgroundColor {
-//         return altfg;
-//     }
-// %end
-
 %hook FormSuggestionLabel
     - (void)setBackgroundColor:(UIColor*)arg {
         %orig(kbSuggestColor);
@@ -370,10 +356,8 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         UIImageView *sepView = [[v subviews] objectAtIndex: 0];
         [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
         sepView = [[v subviews] objectAtIndex: 2];
-        // [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
         [sepView setHidden:true];
         sepView = [[v subviews] objectAtIndex: 4];
-        // [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]]];
         [sepView setHidden:true];
 
         [v setBackgroundColor: kbColor];
