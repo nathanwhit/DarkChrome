@@ -790,6 +790,7 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
             if (!fakeLocBars[t]) {
                 fakeLocBars[t] = [[FakeLocationBar alloc] init];
             }
+            activeTabID = t;
         }
         return tab;
     }
