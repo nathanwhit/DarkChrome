@@ -1,12 +1,10 @@
-#define INSPECT 1
-
-#include <os/log.h>
+// #include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
 
-#define log(str) os_log(OS_LOG_DEFAULT, str)
-#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+// #define log(str) os_log(OS_LOG_DEFAULT, str)
+// #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 
 #define RESOURCEPATH @"/Library/Application Support/com.nwhit.darkchromebund.bundle"
 
@@ -28,17 +26,7 @@ CGFloat alphaOffset;
 
 NSBundle *resBundle;
 
-#if INSPECT==1
-#include "InspCWrapper.m"
-#endif
-
-
 %ctor {
-    #if INSPECT==1
-    // watchClass(%c(FormSuggestionView));
-    watchClass(%c(TableViewURLCell));
-    #endif
-
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
     bool bundleExists = [[NSFileManager defaultManager] fileExistsAtPath:RESOURCEPATH isDirectory:nil];
     if (bundleExists) {
@@ -46,7 +34,6 @@ NSBundle *resBundle;
     }
     else {
         resBundle = nil;
-        log("BUNDLE DOES NOT CURRENTLY EXIST IN FILESYSTEM");
     }
     NSError* errorThrown;
     BOOL isDir;
@@ -947,13 +934,11 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
     }
     
     - (void)dealloc {
-        log("ContentHeaderSuggestionsView dealloced");
         NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
         if (headerViews[hsh]) {
             [headerViews[hsh] needsReInit];
             [headerViews removeObjectForKey:hsh];
         }
-        logf("%{public}@", [fakeLocBars description]);
         %orig;
     }
     
