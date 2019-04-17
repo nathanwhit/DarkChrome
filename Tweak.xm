@@ -134,7 +134,8 @@ static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
 static UIColor * incognitoIndicatorColor = [UIColor colorWithWhite:0.9 alpha:0.5];
-static UIColor * kbColor = [UIColor colorWithRed:0.15 green:0.17 blue:0.17 alpha:1];
+static UIColor * kbColor = [UIColor colorWithWhite:0.18 alpha:1];
+static UIColor * kbSuggestColor = [UIColor colorWithWhite:0.25 alpha:1];
 
 // CLASS OBJECTS FOR TYPE VERIFICATION
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
@@ -204,11 +205,15 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         setButtonBackground(@"autofill_next", button, buttonSize, false);
         button = [self previousButton];
         setButtonBackground(@"autofill_prev", button, buttonSize, false);
-        CGSize sepSize = CGSizeMake(1, buttonHeight);
-        UIImageView *sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:2]);
-        [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]] imageWithSize:sepSize]];
-        sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:5]);
-        [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]] imageWithSize:sepSize]];
+        // CGSize sepSize = CGSizeMake(1, buttonHeight);
+        // UIImageView *sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:2]);
+        UIView *sepView = [[self subviews] objectAtIndex:2];
+        [sepView setHidden:true];
+        // [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]] imageWithSize:sepSize]];
+        // sepView = reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:5]);
+        sepView = [[self subviews] objectAtIndex:5];
+        [sepView setHidden:true];
+        // [sepView setImage:[[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]] imageWithSize:sepSize]];
     }
     - (void)addBackgroundImage {
         %orig;
@@ -337,11 +342,13 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         [button setBackgroundColor:kbColor];
 
         UIImageView *sepView = [[v subviews] objectAtIndex: 0];
-        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_middle_sep" ofType:@"png"]]];
-        sepView = [[v subviews] objectAtIndex: 2];
         [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
+        sepView = [[v subviews] objectAtIndex: 2];
+        // [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
+        [sepView setHidden:true];
         sepView = [[v subviews] objectAtIndex: 4];
-        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]]];
+        // [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_right_sep" ofType:@"png"]]];
+        [sepView setHidden:true];
 
         [v setBackgroundColor: kbColor];
         return v;
