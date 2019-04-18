@@ -1,9 +1,10 @@
-Package: com.nwhit.darkchrome
-Name: DarkChrome
+Package: com.nwhit.darkchromeb
+Name: DarkChromeBeta
+Conflicts: DarkChrome
 Depends: mobilesubstrate
-Version: 1.1.1
+Version: 1.1.1.1-beta
 Architecture: iphoneos-arm
-Description: A complete dark mode for Chrome
+Description: BETA VERSION : A complete dark mode for Chrome
 Maintainer: Nathan Whitaker
 Author: Nathan Whitaker
 Section: Tweaks

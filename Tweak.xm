@@ -19,7 +19,7 @@ bool useIncognitoIndicator;
 CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
-__weak BrowserViewWrangler *wrangler; 
+// __weak BrowserViewWrangler *wrangler; 
 CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
@@ -110,7 +110,7 @@ NSBundle *resBundle;
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
-    wrangler=nil; 
+    // wrangler=nil; 
 }
 
 // COLORS
@@ -402,12 +402,12 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 %end
    
-%hook BrowserViewWrangler
-    - (void)createMainBrowser {
-        %orig;
-        wrangler = (BrowserViewWrangler*)self;
-    }
-%end
+// %hook BrowserViewWrangler
+//     - (void)createMainBrowser {
+//         %orig;
+//         wrangler = (BrowserViewWrangler*)self;
+//     }
+// %end
 
 // TAB OVERVIEW
 %hook GridCell
@@ -856,15 +856,15 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
             return;
         }
-        if (activeTabID == nil) {
-            if (wrangler != nil) {
-                NSNumber* t = @((NSInteger)[[[wrangler mainInterface] tabModel] currentTab]);
-                if (t == nil) {
-                    return;
-                }
-                activeTabID = t;
-            }
-        } 
+        // if (activeTabID == nil) {
+        //     if (wrangler != nil) {
+        //         NSNumber* t = @((NSInteger)[[[wrangler mainInterface] tabModel] currentTab]);
+        //         if (t == nil) {
+        //             return;
+        //         }
+        //         activeTabID = t;
+        //     }
+        // } 
         if (!fakeLocBars[activeTabID]) {
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
