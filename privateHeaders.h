@@ -162,8 +162,7 @@
 - (id)tabAtIndex:(NSUInteger)index;
 @end
 
-@interface Tab
-- (NSString*)tabId;
+@interface Tab : NSObject
 @end
 
 @interface UIImageView (cells)
@@ -231,10 +230,15 @@
 - (id)stackView;
 @end
 
-@interface SettingsTextCell
-- (id)inkView;
-- (id)textLabel;
-- (id)detailTextLabel;
+@interface SettingsTextCell : NSObject
+@property (nonatomic, strong) UIView *inkView;
+@property (nonatomic, strong) UILabel *textLabel;
+@property (nonatomic, strong) UILabel *detailTextLabel;
+@property (nonatomic, strong) UIView *accessoryView;
+@property (nonatomic, strong) UIView *contentView;
+@end
+
+@interface ClearBrowsingDataCell : SettingsTextCell
 @end
 
 @interface HistoryTableViewController

@@ -128,7 +128,7 @@ static UIColor * kbSuggestColor = [UIColor colorWithWhite:0.25 alpha:1];
 static Class articlesHeaderCellClass = %c(ContentSuggestionsArticlesHeaderCell);
 static Class suggestCellClass = %c(ContentSuggestionsCell);
 static Class suggestFooterClass = %c(ContentSuggestionsFooterCell);
-static Class settingsTextCellClass = %c(SettingsTextCell);
+// static Class settingsTextCellClass = %c(SettingsTextCell);
 static Class MDCCellClass = %c(MDCCollectionViewCell);
 static Class visContentViewClass = %c(_UIVisualEffectContentView);
 static Class visEffectViewClass = %c(UIVisualEffectView);
@@ -534,9 +534,15 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 
 %hook ClearBrowsingDataItem
     - (void)configureCell:(id)arg {
-        %orig;
-        [[arg textLabel] setTextColor:txt];
-        [[arg contentView] setBackgroundColor:fg];
+        if ([arg isKindOfClass:%c(SettingsTextCell)]) {
+            __weak SettingsTextCell *cell = reinterpret_cast<SettingsTextCell*>(arg);
+            %orig;
+            [[cell textLabel] setTextColor:txt];
+            [[cell contentView] setBackgroundColor:fg];
+        }
+        else {
+            %orig;
+        }
     }
 %end
 
@@ -550,14 +556,16 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 %hook SettingsTextItem
     - (void)configureCell:(id)arg {
         %orig;
-        [[arg contentView] setBackgroundColor:fg];
-        [[arg inkView] setBackgroundColor:clear];
-        [[arg textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
-        if ([arg isKindOfClass:settingsTextCellClass]) {
-            __weak id separator = MSHookIvar<UIView*>(arg, "_separatorView");
+        if ([arg isKindOfClass:%c(SettingsTextCell)]) {
+            __weak SettingsTextCell *cell = reinterpret_cast<SettingsTextCell*>(arg);
+            %orig;
+            [[cell contentView] setBackgroundColor:fg];
+            [[cell inkView] setBackgroundColor:clear];
+            [[cell textLabel] setTextColor:[UIColor colorWithRed:0.9 green:0.2 blue:0.2 alpha:1]];
+            __weak id separator = MSHookIvar<UIView*>(cell, "_separatorView");
             [separator setBackgroundColor:sep];
-            [[arg accessoryView] setTintColor:white];
-            [[arg accessoryView] setBackgroundColor:clear];
+            [[cell accessoryView] setTintColor:white];
+            [[cell accessoryView] setBackgroundColor:clear];
         }
     }
 %end
@@ -650,14 +658,15 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 %end
     
-static NSMutableSet *imageViewPassSet = [[NSMutableSet alloc] init];
-static NSMutableSet *imageViewSuggestSet = [[NSMutableSet alloc] init];
-static NSMutableSet *imageViewSettingsSet = [[NSMutableSet alloc] init];
+static __strong NSMutableSet *imageViewPassSet;
+static __strong NSMutableSet *imageViewSuggestSet;
+static __strong NSMutableSet *imageViewSettingsSet;
+dispatch_once_t imageViewSetsToken;
 
 static UIImage* handleSuggestionCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [cell setTintColor: altfg];
-    if ([superview isKindOfClass:settingsTextCellClass] && [[cell interactionTintColor] isEqual:altfg]) {
+    if ([superview isKindOfClass:%c(SettingsTextCell)] && [[cell interactionTintColor] isEqual:altfg]) {
         [cell setBackgroundColor:altfg];
     }
     [[superview contentView] setBackgroundColor:nil];
@@ -676,6 +685,12 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
 
 %hook UIImageView
     - (void)setImage:(id)arg {
+        dispatch_once(&imageViewSetsToken, ^{
+            imageViewPassSet = [[NSMutableSet alloc] init];
+            imageViewSuggestSet = [[NSMutableSet alloc] init];
+            imageViewSettingsSet = [[NSMutableSet alloc] init];
+        });
+
         if ([imageViewPassSet containsObject: self]) {
             %orig;
             return;
@@ -699,7 +714,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
                 UIImage* img = handleSuggestionCell(self, arg, superview);
                 %orig(img); 
                 return;
-            } else if ([superview isKindOfClass:settingsTextCellClass]){
+            } else if ([superview isKindOfClass:%c(SettingsTextCell)]){
                 [imageViewSettingsSet addObject: self];
                 UIImage* img = handleSettingsCell(self, arg, superview);
                 %orig(img);
@@ -782,15 +797,19 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
         if (tab == nil) {
             return tab;
         }
-        NSNumber *t = @((NSInteger)tab);
-        if (fakeLocBars == nil) {
-            fakeLocBars = [[NSMutableDictionary alloc] init];
-        }
-        if (t != nil) {
-            if (!fakeLocBars[t]) {
-                fakeLocBars[t] = [[FakeLocationBar alloc] init];
+        __weak Tab *t;
+        if ([self isKindOfClass:%c(Tab)]) {
+            t = reinterpret_cast<Tab*>(self);
+            NSNumber *tabID = @((NSInteger)t);
+            if (fakeLocBars == nil) {
+                fakeLocBars = [[NSMutableDictionary alloc] init];
             }
-            activeTabID = t;
+            if (tabID != nil) {
+                if (!fakeLocBars[tabID]) {
+                    fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
+                }
+                activeTabID = tabID;
+            }
         }
         return tab;
     }
