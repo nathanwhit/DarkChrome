@@ -182,7 +182,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         if ([[self subviews] count] < 5) {
             return;
         }
-        CGRect bgFrame = [reinterpret_cast<UIImageView*>([[self subviews] objectAtIndex:0]) frame];
+        CGRect bgFrame = [(UIImageView*)([[self subviews] objectAtIndex:0]) frame];
         CGFloat buttonHeight = bgFrame.size.height;
         CGFloat buttonWidth = buttonHeight;
         CGSize buttonSize = CGSizeMake(buttonWidth, buttonHeight);
@@ -285,7 +285,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         if (![[[suggest subviews] objectAtIndex:0] isKindOfClass:%c(UIStackView)]) {
             return suggest;
         }
-        __weak UIStackView* stack = reinterpret_cast<UIStackView*>([[suggest subviews] objectAtIndex:0]);
+        __weak UIStackView* stack = (UIStackView*)([[suggest subviews] objectAtIndex:0]);
         if ([[stack arrangedSubviews] count] < 1) {
             return suggest;
         }
@@ -293,7 +293,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         if (![lbl isKindOfClass:%c(UILabel)]) {
             return suggest;
         }
-        __weak UILabel *label = reinterpret_cast<UILabel*>(lbl);
+        __weak UILabel *label = (UILabel*)(lbl);
         [label setTextColor:txt];
         return suggest;
 
@@ -535,7 +535,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 %hook ClearBrowsingDataItem
     - (void)configureCell:(id)arg {
         if ([arg isKindOfClass:%c(SettingsTextCell)]) {
-            __weak SettingsTextCell *cell = reinterpret_cast<SettingsTextCell*>(arg);
+            __weak SettingsTextCell *cell = (SettingsTextCell*)(arg);
             %orig;
             [[cell textLabel] setTextColor:txt];
             [[cell contentView] setBackgroundColor:fg];
@@ -557,7 +557,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     - (void)configureCell:(id)arg {
         %orig;
         if ([arg isKindOfClass:%c(SettingsTextCell)]) {
-            __weak SettingsTextCell *cell = reinterpret_cast<SettingsTextCell*>(arg);
+            __weak SettingsTextCell *cell = (SettingsTextCell*)(arg);
             %orig;
             [[cell contentView] setBackgroundColor:fg];
             [[cell inkView] setBackgroundColor:clear];
