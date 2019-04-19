@@ -1,6 +1,6 @@
 Package: com.nwhit.darkchromeb
 Name: DarkChromeBeta
-Conflicts: DarkChrome
+Conflicts: com.nwhit.darkchrome
 Depends: mobilesubstrate
 Version: 1.1.1.1-beta
 Architecture: iphoneos-arm
