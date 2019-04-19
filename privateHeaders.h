@@ -1,6 +1,8 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
 
+void setupHook();
+
 @interface FormSuggestionLabel : UIView
 @end
 
@@ -154,7 +156,7 @@
 
 @end
 
-@interface TabModel
+@interface TabModel : NSObject
 - (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
 - (id)currentTab;
 - (void)browserStateDestroyed;

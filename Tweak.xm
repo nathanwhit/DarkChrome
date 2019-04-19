@@ -1,10 +1,10 @@
-// #include <os/log.h>
+#include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
 
-// #define log(str) os_log(OS_LOG_DEFAULT, str)
-// #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+#define log(str) os_log(OS_LOG_DEFAULT, str)
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 
 #define RESOURCEPATH @"/Library/Application Support/com.nwhit.darkchromebund.bundle"
 
@@ -111,6 +111,7 @@ NSBundle *resBundle;
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
     // wrangler=nil; 
+    setupHook();
 }
 
 // COLORS
@@ -790,70 +791,152 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
         
     }
 %end
-    
-%hook Tab
-    - (id)initWithWebState:(id)ws {
-        __strong id tab = %orig;
-        if (tab == nil) {
+
+id (*oldInitWithWebState)(id self, SEL _cmd, id webState);
+
+id newInitWithWebState(id self, SEL _cmd, id webState) {
+    __weak id s = self;
+    if (s != nil) {
+        __weak id tab = (*oldInitWithWebState)(self, _cmd, webState);
+        if (!tab) {
+            log("Tab was nil");
             return tab;
         }
-        __weak Tab *t;
-        if ([self isKindOfClass:%c(Tab)]) {
-            t = reinterpret_cast<Tab*>(self);
+        if ([tab isKindOfClass:%c(Tab)]) {
+            __weak Tab *t = (Tab*)(tab);
             NSNumber *tabID = @((NSInteger)t);
             if (fakeLocBars == nil) {
                 fakeLocBars = [[NSMutableDictionary alloc] init];
             }
             if (tabID != nil) {
-                if (!fakeLocBars[tabID]) {
+                logf("Init tab : %{public}@", tabID);
+                if (fakeLocBars[tabID] == nil) {
+                    logf("Tab %{public}@ wasn't in dict", tabID);
                     fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
                 }
-                activeTabID = tabID;
+                else {
+                    logf("Tab %{public}@ WAS in dict", tabID);
+                    [fakeLocBars[tabID] needsReInit];
+                }
+                // if (!activeTabID) {
+                    activeTabID = tabID;
+                // }
             }
         }
         return tab;
     }
+    log("SELF got dealloced");
+    return nil;
+}
+
+void setupHook() {
+    MSHookMessageEx(%c(Tab), @selector(initWithWebState:), (IMP)(&newInitWithWebState), (IMP*)(&oldInitWithWebState));
+}
+    
+%hook Tab
+    // - (id)initWithWebState:(id)ws {
+    //     if (self) {
+    //         __strong id tab = %orig;
+    //         logf("Init tab : %{public}@", tab);
+    //         if (tab == nil) {
+    //             return tab;
+    //         }
+    //         if ([self isKindOfClass:%c(Tab)]) {
+    //             __weak Tab *t = (Tab*)(self);
+    //             NSNumber *tabID = @((NSInteger)t);
+    //             logf("Init tab : %{public}@", tabID);
+    //             if (fakeLocBars == nil) {
+    //                 fakeLocBars = [[NSMutableDictionary alloc] init];
+    //             }
+    //             if (tabID != nil) {
+    //                 if (!fakeLocBars[tabID]) {
+    //                     fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
+    //                 }
+    //                 activeTabID = tabID;
+    //             }
+    //         }
+    //         return tab;
+    //     }
+    //     return %orig;
+    // }
     - (void)webStateDestroyed:(id)ws {
         __weak id tab = (id)self;
         NSNumber *t = @((NSInteger)tab);
+        logf("Tab %{public}@ destroyed", t);
+        logf("State of dict : %{public}@", fakeLocBars);
         if (fakeLocBars[t]) {
             [fakeLocBars removeObjectForKey:t];
         }
         %orig;
     }
+    // - (void)dealloc {
+    //     __weak id tab = (id)self;
+    //     NSNumber *t = @((NSInteger)tab);
+    //     if (t != nil && fakeLocBars[t]) {
+    //         [fakeLocBars removeObjectForKey:t];
+    //     }
+    //     %orig;
+    // }
 %end
 
 %hook BrowserViewController
     - (void)displayTab:(id)tab {
         NSNumber *t = @((NSInteger)tab);
         if (t != nil) {
+            logf("Disp tab : %{public}@", t);
+            logf("State of dict : %{public}@", fakeLocBars);
             activeTabID = t;
-            if (!fakeLocBars[activeTabID]) {
-                fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
-            }
+            // if (!fakeLocBars[activeTabID]) {
+            //     fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
+            // }
         }
         %orig;
     }
 %end
         
-%hook TabModel
-    - (void)applicationDidEnterBackground {
-        %orig;
-        for (NSNumber* tabID in fakeLocBars) {
-            if (fakeLocBars[tabID] != nil) {
-                [fakeLocBars[tabID] needsReInit];
-            }
-        }
-    }
-%end
+// %hook TabModel
+
+//     - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
+//         BOOL ret = %orig;
+//         __strong NSNumber *tabID;
+//         log("Restoring session window");
+//         if ([self respondsToSelector:@selector(tabAtIndex:)]) {
+//             for (NSUInteger i = 0; i < [self count]; i++) {
+//                 tabID = @((NSInteger)[self tabAtIndex:i]);
+//                 if (tabID == nil) {
+//                     continue;
+//                 }
+//                 if (fakeLocBars[tabID] == nil) {
+//                     logf("RSW: Tab %{public}@ wasn't in dict", tabID);
+//                     fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
+//                 }
+//                 else {
+//                     logf("RSW: Tab %{public}@ wasn't in dict", tabID);
+//                     [fakeLocBars[tabID] needsReInit];
+//                 }
+//             }
+//         }
+//         logf("State of dict : %{public}@", fakeLocBars);
+//         return ret;
+//     }
+
+//     - (void)applicationDidEnterBackground {
+//         log("Entering background....");
+//         for (NSNumber* tabID in fakeLocBars) {
+//             if (fakeLocBars[tabID] != nil) {
+//                 [fakeLocBars[tabID] needsReInit];
+//             }
+//         }
+//         logf("State of dict : %{public}@", fakeLocBars);
+//         %orig;
+//     }
+// %end
 
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
-        %orig;
-        if ([self searchHintLabel] != nil) {
-            [[self searchHintLabel] setTextColor:hint];
-        }
+        log("Views being added");
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
+            %orig;
             return;
         }
         // if (activeTabID == nil) {
@@ -865,6 +948,10 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
         //         activeTabID = t;
         //     }
         // } 
+        %orig;
+        if ([self searchHintLabel] != nil) {
+            [[self searchHintLabel] setTextColor:hint];
+        }
         if (!fakeLocBars[activeTabID]) {
             fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
