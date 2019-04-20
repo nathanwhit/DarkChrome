@@ -154,10 +154,13 @@ static CGFloat locBarCornerRadius = 25;
         [self setBvc: b];
         return self;
     }
-    - (void)tabModel:(TabModel*)model didInsertTab:(Tab*)tab atIndex:(NSUInteger)index inForeground:(BOOL)fg {
+    - (void)tabModel:(TabModel*)model didInsertTab:(Tab*)tab atIndex:(NSUInteger)index inForeground:(BOOL)inForeground {
         if (tab) {
             NSNumber *tabID = @((NSInteger)tab);
             if (tabID) {
+                if (inForeground==YES) {
+                    activeTabID = tabID;
+                }
                 if (!fakeLocBars[tabID]) {
                     fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
                 }
