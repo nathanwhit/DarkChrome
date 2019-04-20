@@ -1,10 +1,12 @@
-// #include <os/log.h>
+#include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
+#include "darkchrome_utils.mm"
+// #include "external/tab_model_observer.h"
 
-// #define log(str) os_log(OS_LOG_DEFAULT, str)
-// #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+#define log(str) os_log(OS_LOG_DEFAULT, str)
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 
 #define RESOURCEPATH @"/Library/Application Support/com.nwhit.darkchromebund.bundle"
 
@@ -23,8 +25,13 @@ CGFloat maxHeightDelta;
 CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
+TabModelWatcher *tabObserver;
+__strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars;
+__strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews;
+__strong NSNumber* activeTabID;
 
 NSBundle *resBundle;
+void setupHook();
 
 %ctor {
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
@@ -111,8 +118,14 @@ NSBundle *resBundle;
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
     // wrangler=nil; 
+    tabObserver = nil;
+    fakeLocBars = [[NSMutableDictionary alloc] init];
+    headerViews = [[NSMutableDictionary alloc] init];
+    activeTabID = nil;
+    setupHook();
 }
 
+// CONSTANTS
 // COLORS
 static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
@@ -138,19 +151,43 @@ static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
 
 static CGFloat locBarCornerRadius = 25; 
 
-// UTILITY
-@interface UIImage (ResizeCategory)
-- (UIImage*)imageWithSize:(CGSize)newSize;
-@end
-@implementation UIImage (ResizeCategory)
-- (UIImage*)imageWithSize:(CGSize)newSize
-{
-    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:newSize];
-    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext*_Nonnull myContext) {
-        [self drawInRect:(CGRect) {.origin = CGPointZero, .size = newSize}];
-    }];
-    return image;
-}
+// UTILITIES
+
+@implementation TabModelWatcher
+    - (instancetype)initWithBvc:(BrowserViewController*) b {
+        self = [super init];
+        [self setBvc: b];
+        return self;
+    }
+    - (void)tabModel:(TabModel*)model didInsertTab:(Tab*)tab atIndex:(NSUInteger)index inForeground:(BOOL)fg {
+        if (tab) {
+            NSNumber *tabID = @((NSInteger)tab);
+            if (tabID) {
+                if (!fakeLocBars[tabID]) {
+                    fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
+                }
+                else {
+                    [fakeLocBars[tabID] needsReInit];
+                }
+            }
+        }
+    }
+    - (void)tabModel:(TabModel*)model willRemoveTab:(Tab*)tab {
+        if (tab) {
+            NSNumber *tabID = @((NSInteger)tab);
+            if (tabID && fakeLocBars[tabID]) {
+                [fakeLocBars removeObjectForKey:tabID];
+            }
+        }
+    }
+    - (void)tabModel:(TabModel*)model didChangeActiveTab:(Tab*)newTab previousTab:(Tab*)previousTab atIndex:(NSUInteger)index {
+        if (newTab) {
+            NSNumber *tabID = @((NSInteger)newTab);
+            if (tabID) {
+                activeTabID = tabID;
+            }
+        }
+    }
 @end
 
 static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize size, bool closeButton) {
@@ -661,7 +698,6 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 static __strong NSMutableSet *imageViewPassSet;
 static __strong NSMutableSet *imageViewSuggestSet;
 static __strong NSMutableSet *imageViewSettingsSet;
-dispatch_once_t imageViewSetsToken;
 
 static UIImage* handleSuggestionCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
@@ -685,6 +721,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
 
 %hook UIImageView
     - (void)setImage:(id)arg {
+        static dispatch_once_t imageViewSetsToken;
         dispatch_once(&imageViewSetsToken, ^{
             imageViewPassSet = [[NSMutableSet alloc] init];
             imageViewSuggestSet = [[NSMutableSet alloc] init];
@@ -740,44 +777,6 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         }
     }
 %end
-    
-@interface FakeLocationBar : NSObject
-    @property (strong) NSMutableArray *effectViews;
-    @property (weak) NSLayoutConstraint *heightConstraint;
-    @property CGFloat oldHeight;
-    @property bool needsInitialization;
-    @property (weak) UIVisualEffectView *mainVisualEffect;
-    @property bool effectsHidden;
-    @property (weak) UIButton* fakeBox;
-    - (id)init;
-    - (void)needsReInit;
-@end
-
-@implementation FakeLocationBar
-- (id)init {
-    self.effectViews = [[NSMutableArray alloc] init];
-    self.heightConstraint = nil;
-    self.oldHeight = -1;
-    self.needsInitialization = true;
-    self.mainVisualEffect = nil;
-    self.effectsHidden = false;
-    self.fakeBox = nil;
-    return self;
-}
-- (void)needsReInit {
-    [[self effectViews] removeAllObjects];
-    self.heightConstraint = nil;
-    self.oldHeight = -1;
-    self.needsInitialization = true;
-    self.mainVisualEffect = nil;
-    self.effectsHidden = false;
-    self.fakeBox = nil;
-}
-@end
-
-static NSNumber* activeTabID = nil;
-static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars = [[NSMutableDictionary alloc] init];
-static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = [[NSMutableDictionary alloc] init];
 
 %hook TabGridViewController
     -(void)setView:(id)arg {
@@ -791,61 +790,122 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
     }
 %end
     
-%hook Tab
-    - (id)initWithWebState:(id)ws {
-        __strong id tab = %orig;
-        if (tab == nil) {
-            return tab;
+// %hook Tab
+//     - (id)initWithWebState:(id)ws {
+//         __strong id tab = %orig;
+//         if (tab == nil) {
+//             return tab;
+//         }
+//         __weak Tab *t;
+//         if ([self isKindOfClass:%c(Tab)]) {
+//             t = reinterpret_cast<Tab*>(self);
+//             NSNumber *tabID = @((NSInteger)t);
+//             if (fakeLocBars == nil) {
+//                 fakeLocBars = [[NSMutableDictionary alloc] init];
+//             }
+//             if (tabID != nil) {
+//                 if (!fakeLocBars[tabID]) {
+//                     fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
+//                 }
+//                 activeTabID = tabID;
+//             }
+//         }
+//         return tab;
+//     }
+//     - (void)webStateDestroyed:(id)ws {
+//         __weak id tab = (id)self;
+//         NSNumber *t = @((NSInteger)tab);
+//         if (fakeLocBars[t]) {
+//             [fakeLocBars removeObjectForKey:t];
+//         }
+//         %orig;
+//     }
+// %end
+
+void (*oldUpdateWithTabModel)(id __strong self, SEL _cmd, id __strong model, void* state);
+
+void newUpdateWithTabModel(id __strong self, SEL _cmd,  id __strong model, void* state) {
+    logf("SELF : %{public}@", self);
+    // logf("CMD : %{public}@", _cmd);
+    log("HERE");
+    // __weak id s = self;
+    // if (s) {
+    (*oldUpdateWithTabModel)(self, _cmd, model, state);
+    if ([self isOffTheRecord]==NO && [self tabModel] && !tabObserver) {
+        tabObserver = [[TabModelWatcher alloc] init];
+        [[self tabModel] addObserver: tabObserver];
+        NSNumber * tabID = @((NSInteger)[[self tabModel] currentTab]);
+        if (tabID) {
+            activeTabID = tabID;
         }
-        __weak Tab *t;
-        if ([self isKindOfClass:%c(Tab)]) {
-            t = reinterpret_cast<Tab*>(self);
-            NSNumber *tabID = @((NSInteger)t);
-            if (fakeLocBars == nil) {
-                fakeLocBars = [[NSMutableDictionary alloc] init];
-            }
-            if (tabID != nil) {
-                if (!fakeLocBars[tabID]) {
-                    fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
-                }
-                activeTabID = tabID;
-            }
-        }
-        return tab;
     }
-    - (void)webStateDestroyed:(id)ws {
-        __weak id tab = (id)self;
-        NSNumber *t = @((NSInteger)tab);
-        if (fakeLocBars[t]) {
-            [fakeLocBars removeObjectForKey:t];
+    // }
+}
+
+void setupHook() {
+    log("SETTING UP HOOK");
+    MSHookMessageEx(%c(BrowserViewController), @selector(updateWithTabModel:browserState:), (IMP)&newUpdateWithTabModel, (IMP*)&oldUpdateWithTabModel);
+    logf("OLD METHOD PTR : %{public}p", (void*)oldUpdateWithTabModel);
+    logf("NEW METHOD PTR : %{public}p", (void**)newUpdateWithTabModel);
+}
+
+%hook BrowserViewController
+    // - (instancetype)initWithTabModel:(TabModel*)model browserState:(NSObject*)browserState dependencyFactory:(id)factory applicationCommandEndpoint:(id)applicationCommandEndpoint commandDispatcher:(id)commandDispatcher browserContainerViewController:(id)browserContainerViewController {
+    //             id b = %orig;
+    //             if (b) {
+    //                 static dispatch_once_t initHookToken;
+    //                 dispatch_once(&initHookToken, ^{
+    //                     setupHook();
+    //                 });
+    //             }
+    //             return b;
+    //         }
+    // - (void)init {
+        
+    // }
+    // - (void)updateWithTabModel:(TabModel*)model browserState:(id)state {
+        // log("here");
+        // if (self && [self isOffTheRecord]==NO && model && !tabObserver) {
+        //     log("made it");
+        //     tabObserver = [[TabModelWatcher alloc] init];
+        //     [model addObserver:tabObserver];
+        //     log("ok");
+        // }
+    //     %orig;
+    // }
+    - (void)shutdown {
+        if (self && [self isOffTheRecord]==NO && tabObserver && [self tabModel]) {
+            [[self tabModel] removeObserver:tabObserver];
+            [fakeLocBars removeAllObjects];
+            [headerViews removeAllObjects];
+            tabObserver = nil;
         }
         %orig;
     }
 %end
 
-%hook BrowserViewController
-    - (void)displayTab:(id)tab {
-        NSNumber *t = @((NSInteger)tab);
-        if (t != nil) {
-            activeTabID = t;
-            if (!fakeLocBars[activeTabID]) {
-                fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
-            }
-        }
-        %orig;
-    }
-%end
+// %hook MainController
+//     - (instancetype)init {
+//         id mc = %orig;
+//         static dispatch_once_t setupHookToken;
+//         dispatch_once(&setupHookToken, ^{
+//             setupHook();
+//         });
+//         return mc;
+//     }
+
+// %end
         
-%hook TabModel
-    - (void)applicationDidEnterBackground {
-        %orig;
-        for (NSNumber* tabID in fakeLocBars) {
-            if (fakeLocBars[tabID] != nil) {
-                [fakeLocBars[tabID] needsReInit];
-            }
-        }
-    }
-%end
+// %hook TabModel
+//     - (void)applicationDidEnterBackground {
+//         %orig;
+//         for (NSNumber* tabID in fakeLocBars) {
+//             if (fakeLocBars[tabID] != nil) {
+//                 [fakeLocBars[tabID] needsReInit];
+//             }
+//         }
+//     }
+// %end
 
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
@@ -853,7 +913,7 @@ static __strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews = 
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
-        if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1) {
+        if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1 || activeTabID == nil) {
             return;
         }
         // if (activeTabID == nil) {

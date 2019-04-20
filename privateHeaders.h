@@ -52,11 +52,29 @@
 @property (strong) ToolbarConfiguration* toolbarConfiguration;
 @end
 
-@interface BrowserViewController
-- (id)secondaryToolbarCoordinator;
-- (BOOL)isActive;
+@interface TabModel
+- (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
+- (id)currentTab;
+- (void)browserStateDestroyed;
+- (NSUInteger)count;
+- (id)tabAtIndex:(NSUInteger)index;
+- (void)addObserver:(id)obs;
+- (void)removeObserver:(id)obs;
 @end
 
+@interface Tab : NSObject
+@end
+
+
+@interface BrowserViewController
+- (id)secondaryToolbarCoordinator;
+@property (nonatomic, strong) TabModel *tabModel;
+- (BOOL)isActive;
+- (void)updateWithTabModel:(TabModel*)model browserState:(id)browserState;
+- (BOOL)isOffTheRecord;
+- (void)shutdown;
+@end
+              
 @interface BrowserViewWrangler
 - (void)setCurrentInterface:(id)uInterface;
 - (id)incognitoInterface;
@@ -152,17 +170,6 @@
 @interface TabGridViewController
 - (id)view;
 
-@end
-
-@interface TabModel
-- (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
-- (id)currentTab;
-- (void)browserStateDestroyed;
-- (NSUInteger)count;
-- (id)tabAtIndex:(NSUInteger)index;
-@end
-
-@interface Tab : NSObject
 @end
 
 @interface UIImageView (cells)
