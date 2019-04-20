@@ -3,7 +3,6 @@
 #include <math.h>
 #include "external/toolbar_utils.mm"
 #include "darkchrome_utils.mm"
-// #include "external/tab_model_observer.h"
 
 #define log(str) os_log(OS_LOG_DEFAULT, str)
 #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
@@ -21,17 +20,15 @@ bool useIncognitoIndicator;
 CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
-// __weak BrowserViewWrangler *wrangler; 
 CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
 TabModelWatcher *tabObserver;
-__strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars;
-__strong NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews;
-__strong NSNumber* activeTabID;
+NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars;
+NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews;
+NSNumber* activeTabID;
 
 NSBundle *resBundle;
-void setupHook();
 
 %ctor {
     NSString* prefsPath = @"/User/Library/Preferences/com.nwhit.darkchromeprefs.plist";
@@ -117,12 +114,10 @@ void setupHook();
     fakeLocBarExpandedHeight = ToolbarExpandedHeight([[UIApplication sharedApplication] preferredContentSizeCategory]);
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
-    // wrangler=nil; 
     tabObserver = nil;
     fakeLocBars = [[NSMutableDictionary alloc] init];
     headerViews = [[NSMutableDictionary alloc] init];
     activeTabID = nil;
-    setupHook();
 }
 
 // CONSTANTS
@@ -315,7 +310,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 
     - (FormSuggestionLabel*)initWithSuggestion:(id)arg1 index:(NSUInteger)arg2 userInteractionEnabled:(BOOL)arg3 numSuggestions:(NSUInteger)arg4 client:(id)arg5 {
-        __strong FormSuggestionLabel* suggest = %orig;
+        FormSuggestionLabel* suggest = %orig;
         if ([[suggest subviews] count] < 1) {
             return suggest;
         }
@@ -695,9 +690,9 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 %end
     
-static __strong NSMutableSet *imageViewPassSet;
-static __strong NSMutableSet *imageViewSuggestSet;
-static __strong NSMutableSet *imageViewSettingsSet;
+static NSMutableSet *imageViewPassSet;
+static NSMutableSet *imageViewSuggestSet;
+static NSMutableSet *imageViewSettingsSet;
 
 static UIImage* handleSuggestionCell(id cell, __weak id image, __weak id superview) {
     UIImage* img = [(UIImage*)image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
@@ -789,123 +784,49 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         
     }
 %end
-    
-// %hook Tab
-//     - (id)initWithWebState:(id)ws {
-//         __strong id tab = %orig;
-//         if (tab == nil) {
-//             return tab;
-//         }
-//         __weak Tab *t;
-//         if ([self isKindOfClass:%c(Tab)]) {
-//             t = reinterpret_cast<Tab*>(self);
-//             NSNumber *tabID = @((NSInteger)t);
-//             if (fakeLocBars == nil) {
-//                 fakeLocBars = [[NSMutableDictionary alloc] init];
-//             }
-//             if (tabID != nil) {
-//                 if (!fakeLocBars[tabID]) {
-//                     fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
-//                 }
-//                 activeTabID = tabID;
-//             }
-//         }
-//         return tab;
-//     }
-//     - (void)webStateDestroyed:(id)ws {
-//         __weak id tab = (id)self;
-//         NSNumber *t = @((NSInteger)tab);
-//         if (fakeLocBars[t]) {
-//             [fakeLocBars removeObjectForKey:t];
-//         }
-//         %orig;
-//     }
-// %end
 
-void (*oldUpdateWithTabModel)(id __strong self, SEL _cmd, id __strong model, void* state);
-
-void newUpdateWithTabModel(id __strong self, SEL _cmd,  id __strong model, void* state) {
-    logf("SELF : %{public}@", self);
-    // logf("CMD : %{public}@", _cmd);
-    log("HERE");
-    // __weak id s = self;
-    // if (s) {
-    (*oldUpdateWithTabModel)(self, _cmd, model, state);
-    if ([self isOffTheRecord]==NO && [self tabModel] && !tabObserver) {
-        tabObserver = [[TabModelWatcher alloc] init];
-        [[self tabModel] addObserver: tabObserver];
-        NSNumber * tabID = @((NSInteger)[[self tabModel] currentTab]);
-        if (tabID) {
-            activeTabID = tabID;
+%hook BrowserViewController       
+    - (void)updateWithTabModel:(TabModel*)model browserState:(void*)state {
+        %orig;
+        if (self && [self isOffTheRecord]==NO && model && !tabObserver) {
+            tabObserver = [[TabModelWatcher alloc] init];
+            [model addObserver:tabObserver];
+            NSNumber * tabID = @((NSInteger)[[self tabModel] currentTab]);
+            if (tabID) {
+                activeTabID = tabID;
+            }
         }
     }
-    // }
-}
-
-void setupHook() {
-    log("SETTING UP HOOK");
-    MSHookMessageEx(%c(BrowserViewController), @selector(updateWithTabModel:browserState:), (IMP)&newUpdateWithTabModel, (IMP*)&oldUpdateWithTabModel);
-    logf("OLD METHOD PTR : %{public}p", (void*)oldUpdateWithTabModel);
-    logf("NEW METHOD PTR : %{public}p", (void**)newUpdateWithTabModel);
-}
-
-%hook BrowserViewController
-    // - (instancetype)initWithTabModel:(TabModel*)model browserState:(NSObject*)browserState dependencyFactory:(id)factory applicationCommandEndpoint:(id)applicationCommandEndpoint commandDispatcher:(id)commandDispatcher browserContainerViewController:(id)browserContainerViewController {
-    //             id b = %orig;
-    //             if (b) {
-    //                 static dispatch_once_t initHookToken;
-    //                 dispatch_once(&initHookToken, ^{
-    //                     setupHook();
-    //                 });
-    //             }
-    //             return b;
-    //         }
-    // - (void)init {
-        
-    // }
-    // - (void)updateWithTabModel:(TabModel*)model browserState:(id)state {
-        // log("here");
-        // if (self && [self isOffTheRecord]==NO && model && !tabObserver) {
-        //     log("made it");
-        //     tabObserver = [[TabModelWatcher alloc] init];
-        //     [model addObserver:tabObserver];
-        //     log("ok");
-        // }
-    //     %orig;
-    // }
     - (void)shutdown {
-        if (self && [self isOffTheRecord]==NO && tabObserver && [self tabModel]) {
-            [[self tabModel] removeObserver:tabObserver];
-            [fakeLocBars removeAllObjects];
-            [headerViews removeAllObjects];
+        if ([self isOffTheRecord]==NO) {
+            fakeLocBars = [[NSMutableDictionary alloc] init];
             tabObserver = nil;
         }
         %orig;
     }
 %end
 
-// %hook MainController
-//     - (instancetype)init {
-//         id mc = %orig;
-//         static dispatch_once_t setupHookToken;
-//         dispatch_once(&setupHookToken, ^{
-//             setupHook();
-//         });
-//         return mc;
-//     }
-
-// %end
-        
-// %hook TabModel
-//     - (void)applicationDidEnterBackground {
-//         %orig;
-//         for (NSNumber* tabID in fakeLocBars) {
-//             if (fakeLocBars[tabID] != nil) {
-//                 [fakeLocBars[tabID] needsReInit];
-//             }
-//         }
-//     }
-// %end
+%hook TabModel
+    - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
+        BOOL ret = %orig;
+        NSNumber *tabID;
+        if ([self respondsToSelector:@selector(tabAtIndex:)]) {
+            for (NSUInteger i = 0; i < [self count]; i++) {
+                tabID = @((NSInteger)[self tabAtIndex:i]);
+                if (tabID == nil) {
+                    continue;
+                }
+                if (fakeLocBars[tabID] == nil) {
+                    fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
+                }
+                else {
+                    [fakeLocBars[tabID] needsReInit];
+                }
+            }
+        }
+        return ret;
+    }
+%end
 
 %hook ContentSuggestionsHeaderView
     - (void)addViewsToSearchField:(id)arg {
@@ -915,18 +836,6 @@ void setupHook() {
         }
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1 || activeTabID == nil) {
             return;
-        }
-        // if (activeTabID == nil) {
-        //     if (wrangler != nil) {
-        //         NSNumber* t = @((NSInteger)[[[wrangler mainInterface] tabModel] currentTab]);
-        //         if (t == nil) {
-        //             return;
-        //         }
-        //         activeTabID = t;
-        //     }
-        // } 
-        if (!fakeLocBars[activeTabID]) {
-            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
         }
         if ([fakeLocBars[activeTabID] needsInitialization]) {
             [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
@@ -965,10 +874,6 @@ void setupHook() {
         CGFloat c = [(NSLayoutConstraint*)bh constant];
         CGFloat minDelt = fabs(fakeLocBarMinHeight - c);
         if (activeTabID == nil) {
-            return bh;
-        }
-        if (!fakeLocBars[activeTabID]) {
-            fakeLocBars[activeTabID] = [[FakeLocationBar alloc] init];
             return bh;
         }
         if ([fakeLocBars[activeTabID] needsInitialization] || [[fakeLocBars[activeTabID] effectViews] count] < 2) {
