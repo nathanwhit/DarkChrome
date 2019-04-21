@@ -408,8 +408,20 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 // TAB OVERVIEW
 %hook GridCell
     - (void)setTheme:(NSUInteger)arg {
+        if (arg != 2) {
+            [self setIsIncognito:NO];
+        }
         %orig(2);
     }
+    - (void)setTitleHidden:(BOOL)hide {
+        if ([self isIncognito]==NO) {
+            %orig(NO);
+        }
+        else {
+            %orig;
+        }
+    }
+    %property (assign, nonatomic) BOOL isIncognito;
 %end
     
 %hook GridViewController

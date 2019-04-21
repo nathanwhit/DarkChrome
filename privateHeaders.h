@@ -168,6 +168,8 @@
 - (void)setTheme:(NSUInteger)arg;
 - (id)topBar;
 - (void)updateTopBar;
+@property (assign, nonatomic) BOOL isIncognito;
+@property (nonatomic, assign) BOOL titleHidden;
 @end
 
 @interface TabGridViewController
