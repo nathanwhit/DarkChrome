@@ -1,5 +1,6 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
+#include "darkchrome_utils.mm"
 
 @interface FormSuggestionLabel : UIView
 @end
@@ -52,11 +53,31 @@
 @property (strong) ToolbarConfiguration* toolbarConfiguration;
 @end
 
-@interface BrowserViewController
-- (id)secondaryToolbarCoordinator;
-- (BOOL)isActive;
+@interface TabModel : NSObject
+- (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
+- (id)currentTab;
+- (void)browserStateDestroyed;
+- (NSUInteger)count;
+- (id)tabAtIndex:(NSUInteger)index;
+- (void)addObserver:(id)obs;
+- (void)removeObserver:(id)obs;
+@property (getter=isOffTheRecord) BOOL offTheRecord;
 @end
 
+@interface Tab : NSObject
+@property (strong, nonatomic) FakeLocationBar* fakeLocBar;
+@end
+
+
+@interface BrowserViewController
+- (id)secondaryToolbarCoordinator;
+@property (nonatomic, strong) TabModel *tabModel;
+- (BOOL)isActive;
+- (void)updateWithTabModel:(TabModel*)model browserState:(id)browserState;
+- (BOOL)isOffTheRecord;
+- (void)shutdown;
+@end
+              
 @interface BrowserViewWrangler
 - (void)setCurrentInterface:(id)uInterface;
 - (id)incognitoInterface;
@@ -154,18 +175,6 @@
 
 @end
 
-@interface TabModel
-- (void)restoreSessionWindow:(id)session forInitialRestore:(id)restore;
-- (id)currentTab;
-- (void)browserStateDestroyed;
-- (NSUInteger)count;
-- (id)tabAtIndex:(NSUInteger)index;
-@end
-
-@interface Tab
-- (NSString*)tabId;
-@end
-
 @interface UIImageView (cells)
 - (void)_setDefaultRenderingMode:(NSInteger)arg;
 - (void)setInteractionTintColor:(id)arg;
@@ -231,10 +240,15 @@
 - (id)stackView;
 @end
 
-@interface SettingsTextCell
-- (id)inkView;
-- (id)textLabel;
-- (id)detailTextLabel;
+@interface SettingsTextCell : NSObject
+@property (nonatomic, strong) UIView *inkView;
+@property (nonatomic, strong) UILabel *textLabel;
+@property (nonatomic, strong) UILabel *detailTextLabel;
+@property (nonatomic, strong) UIView *accessoryView;
+@property (nonatomic, strong) UIView *contentView;
+@end
+
+@interface ClearBrowsingDataCell : SettingsTextCell
 @end
 
 @interface HistoryTableViewController
