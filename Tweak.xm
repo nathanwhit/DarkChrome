@@ -404,13 +404,6 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         %orig(bg);
     }
 %end
-   
-// %hook BrowserViewWrangler
-//     - (void)createMainBrowser {
-//         %orig;
-//         wrangler = (BrowserViewWrangler*)self;
-//     }
-// %end
 
 // TAB OVERVIEW
 %hook GridCell

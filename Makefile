@@ -3,15 +3,15 @@ export COPYFILE_DISABLE=1
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = DarkChromeBeta
+TWEAK_NAME = DarkChrome
 BUNDLE_NAME = com.nwhit.darkchromebund
 com.nwhit.darkchromebund_INSTALL_PATH = /Library/Application Support
 
 include $(THEOS)/makefiles/bundle.mk
 
-DarkChromeBeta_FILES = Tweak.xm
-DarkChromeBeta_FRAMEWORKS = UIKit Foundation
-DarkChromeBeta_CFLAGS += -fobjc-arc
+DarkChrome_FILES = Tweak.xm
+DarkChrome_FRAMEWORKS = UIKit Foundation
+DarkChrome_CFLAGS += -fobjc-arc
 export ARCHS = arm64
 DEBUG=0
 include $(THEOS_MAKE_PATH)/tweak.mk
