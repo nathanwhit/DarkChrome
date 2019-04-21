@@ -1,5 +1,6 @@
 #ifndef PRIVATEHEADERS_H
 #define PRIVATEHEADERS_H
+#include "darkchrome_utils.mm"
 
 @interface FormSuggestionLabel : UIView
 @end
@@ -60,9 +61,11 @@
 - (id)tabAtIndex:(NSUInteger)index;
 - (void)addObserver:(id)obs;
 - (void)removeObserver:(id)obs;
+@property (getter=isOffTheRecord) BOOL offTheRecord;
 @end
 
 @interface Tab : NSObject
+@property (strong, nonatomic) FakeLocationBar* fakeLocBar;
 @end
 
 

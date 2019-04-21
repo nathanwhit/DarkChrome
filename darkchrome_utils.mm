@@ -1,44 +1,24 @@
 #ifndef DC_UTILS
 #define DC_UTILS
+
 #include "privateHeaders.h"
 #include "external/tab_model_observer.h"
+#include <os/log.h>
+
+#define log(str) os_log(OS_LOG_DEFAULT, str)
+#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+
 @interface FakeLocationBar : NSObject
-    @property (strong) NSMutableArray *effectViews;
-    @property (weak) NSLayoutConstraint *heightConstraint;
-    @property CGFloat oldHeight;
-    @property bool needsInitialization;
+    @property (weak) UIVisualEffectView *subEffect1;
+    @property (weak) UIVisualEffectView *subEffect2;
     @property (weak) UIVisualEffectView *mainVisualEffect;
-    @property bool effectsHidden;
-    @property (weak) UIButton* fakeBox;
-    - (id)init;
-    - (void)needsReInit;
+    @property CGFloat oldHeight;
 @end
 
 @implementation FakeLocationBar
-- (id)init {
-    self.effectViews = [[NSMutableArray alloc] init];
-    self.heightConstraint = nil;
-    self.oldHeight = -1;
-    self.needsInitialization = true;
-    self.mainVisualEffect = nil;
-    self.effectsHidden = false;
-    self.fakeBox = nil;
-    return self;
-}
-- (void)needsReInit {
-    [[self effectViews] removeAllObjects];
-    self.heightConstraint = nil;
-    self.oldHeight = -1;
-    self.needsInitialization = true;
-    self.mainVisualEffect = nil;
-    self.effectsHidden = false;
-    self.fakeBox = nil;
-}
 @end
 
 @interface TabModelWatcher : NSObject <TabModelObserver>
-    @property (strong, nonatomic) BrowserViewController *bvc;
-    - (instancetype)initWithBvc:(BrowserViewController*) b;
 @end
 
 @interface UIImage (ResizeCategory)

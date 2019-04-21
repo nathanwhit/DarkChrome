@@ -1,11 +1,7 @@
-// #include <os/log.h>
 #include "privateHeaders.h"
 #include <math.h>
 #include "external/toolbar_utils.mm"
 #include "darkchrome_utils.mm"
-
-// #define log(str) os_log(OS_LOG_DEFAULT, str)
-// #define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
 
 #define RESOURCEPATH @"/Library/Application Support/com.nwhit.darkchromebund.bundle"
 
@@ -24,9 +20,7 @@ CGFloat blurWhite;
 CGFloat blurAlpha;
 CGFloat alphaOffset;
 TabModelWatcher *tabObserver;
-NSMutableDictionary<NSNumber*, FakeLocationBar*> *fakeLocBars;
-NSMutableDictionary<NSNumber*, FakeLocationBar*> *headerViews;
-NSNumber* activeTabID;
+Tab __weak *activeTab;
 
 NSBundle *resBundle;
 
@@ -115,9 +109,7 @@ NSBundle *resBundle;
     maxHeightDelta = fakeLocBarExpandedHeight - fakeLocBarMinHeight;
     
     tabObserver = nil;
-    fakeLocBars = [[NSMutableDictionary alloc] init];
-    headerViews = [[NSMutableDictionary alloc] init];
-    activeTabID = nil;
+    activeTab = nil;
 }
 
 // CONSTANTS
@@ -149,42 +141,18 @@ static CGFloat locBarCornerRadius = 25;
 // UTILITIES
 
 @implementation TabModelWatcher
-    - (instancetype)initWithBvc:(BrowserViewController*) b {
-        self = [super init];
-        [self setBvc: b];
-        return self;
-    }
     - (void)tabModel:(TabModel*)model didInsertTab:(Tab*)tab atIndex:(NSUInteger)index inForeground:(BOOL)inForeground {
         if (tab) {
-            NSNumber *tabID = @((NSInteger)tab);
-            if (tabID) {
-                if (inForeground==YES) {
-                    activeTabID = tabID;
-                }
-                if (!fakeLocBars[tabID]) {
-                    fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
-                }
-                else {
-                    [fakeLocBars[tabID] needsReInit];
-                }
+            if (![tab fakeLocBar]) {
+                [tab setFakeLocBar:[[FakeLocationBar alloc] init]];
             }
-        }
-    }
-    - (void)tabModel:(TabModel*)model willRemoveTab:(Tab*)tab {
-        if (tab) {
-            NSNumber *tabID = @((NSInteger)tab);
-            if (tabID && fakeLocBars[tabID]) {
-                [fakeLocBars removeObjectForKey:tabID];
+            if (inForeground==YES) {
+                activeTab = tab;
             }
         }
     }
     - (void)tabModel:(TabModel*)model didChangeActiveTab:(Tab*)newTab previousTab:(Tab*)previousTab atIndex:(NSUInteger)index {
-        if (newTab) {
-            NSNumber *tabID = @((NSInteger)newTab);
-            if (tabID) {
-                activeTabID = tabID;
-            }
-        }
+        activeTab = newTab;
     }
 @end
 
@@ -794,15 +762,13 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         if (self && [self isOffTheRecord]==NO && model && !tabObserver) {
             tabObserver = [[TabModelWatcher alloc] init];
             [model addObserver:tabObserver];
-            NSNumber * tabID = @((NSInteger)[[self tabModel] currentTab]);
-            if (tabID) {
-                activeTabID = tabID;
+            if (Tab __weak *tab=[model currentTab]) {
+                activeTab = tab;
             }
         }
     }
     - (void)shutdown {
         if ([self isOffTheRecord]==NO) {
-            fakeLocBars = [[NSMutableDictionary alloc] init];
             tabObserver = nil;
         }
         %orig;
@@ -812,23 +778,26 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
 %hook TabModel
     - (BOOL)restoreSessionWindow:(id)session forInitialRestore:(BOOL)restore {
         BOOL ret = %orig;
-        NSNumber *tabID;
-        if ([self respondsToSelector:@selector(tabAtIndex:)]) {
-            for (NSUInteger i = 0; i < [self count]; i++) {
-                tabID = @((NSInteger)[self tabAtIndex:i]);
-                if (tabID == nil) {
-                    continue;
-                }
-                if (fakeLocBars[tabID] == nil) {
-                    fakeLocBars[tabID] = [[FakeLocationBar alloc] init];
-                }
-                else {
-                    [fakeLocBars[tabID] needsReInit];
+        if ([self isOffTheRecord]==NO) {
+            if ([self respondsToSelector:@selector(tabAtIndex:)]) {
+                int numTabs = [self count];
+                Tab __weak *tab;
+                for (NSUInteger i = 0; i < numTabs; i++) {
+                    tab = [self tabAtIndex:i];
+                    if (tab) {
+                        [tab setFakeLocBar:[[FakeLocationBar alloc] init]];
+                    }
                 }
             }
+            activeTab = [self currentTab];
         }
+        
         return ret;
     }
+%end
+
+%hook Tab
+    %property (strong, nonatomic) FakeLocationBar *fakeLocBar;
 %end
 
 %hook ContentSuggestionsHeaderView
@@ -837,38 +806,27 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         if ([self searchHintLabel] != nil) {
             [[self searchHintLabel] setTextColor:hint];
         }
-        if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1 || activeTabID == nil) {
+        if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1 || activeTab == nil) {
             return;
         }
-        if ([fakeLocBars[activeTabID] needsInitialization]) {
-            [fakeLocBars[activeTabID] setHeightConstraint: [self fakeLocationBarHeightConstraint]];
-            [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent:0.2]];
-            [fakeLocBars[activeTabID] setFakeBox:arg];
-            __weak id veff = [[arg subviews] objectAtIndex:0];
-            [fakeLocBars[activeTabID] setMainVisualEffect:veff];
-            headerViews[[[NSNumber alloc] initWithUnsignedInteger:[self hash]]] = fakeLocBars[activeTabID];
-            [veff setBackgroundColor: [blurColor colorWithAlphaComponent:0.1]];
-            if ([[veff subviews] count] >= 2) {
-                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:0]];
-                [[fakeLocBars[activeTabID] effectViews] addObject:[[veff subviews] objectAtIndex:1]];
-                __weak id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-                __weak id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
-                [[sub1 layer] setCornerRadius:locBarCornerRadius];
-                [[sub2 layer] setCornerRadius:locBarCornerRadius];
-                [[veff layer] setCornerRadius:locBarCornerRadius];
-                [fakeLocBars[activeTabID] setNeedsInitialization: false];
-            }
-            else {
-                [[veff layer] setCornerRadius:locBarCornerRadius];
-                [fakeLocBars[activeTabID] setNeedsInitialization: true];
-            }
+        FakeLocationBar __weak *flb = [activeTab fakeLocBar];
+        [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent:alphaOffset]];
+        UIVisualEffectView __weak *veff = [[arg subviews] objectAtIndex:0];
+        [[activeTab fakeLocBar] setMainVisualEffect:veff];
+        [veff setBackgroundColor: [blurColor colorWithAlphaComponent:alphaOffset]];
+        if ([[veff subviews] count] >= 2) {
+            [flb setSubEffect1:[[veff subviews] objectAtIndex:0]];
+            [flb setSubEffect2:[[veff subviews] objectAtIndex:1]];
+            UIVisualEffectView __weak *sub1 = [[veff subviews] objectAtIndex:0];
+            UIVisualEffectView __weak *sub2 = [[veff subviews] objectAtIndex:1];
+            [flb setSubEffect1:sub1];
+            [flb setSubEffect2:sub2];
+            [[sub1 layer] setCornerRadius:locBarCornerRadius];
+            [[sub2 layer] setCornerRadius:locBarCornerRadius];
+            [[veff layer] setCornerRadius:locBarCornerRadius];
         }
-    }
-    
-    - (void)setFakeLocationBarHeightConstraint:(id)arg {
-        %orig;
-        if (arg != nil && fakeLocBars[activeTabID] != nil) {
-            [fakeLocBars[activeTabID] setHeightConstraint: arg];
+        else {
+            [[veff layer] setCornerRadius:locBarCornerRadius];
         }
     }
     
@@ -876,21 +834,19 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         NSLayoutConstraint* bh = %orig;
         CGFloat c = [(NSLayoutConstraint*)bh constant];
         CGFloat minDelt = fabs(fakeLocBarMinHeight - c);
-        if (activeTabID == nil) {
+        if (!activeTab) {
             return bh;
-        }
-        if ([fakeLocBars[activeTabID] needsInitialization] || [[fakeLocBars[activeTabID] effectViews] count] < 2) {
-            return bh;
-        }        
-        CGFloat delta = c - [fakeLocBars[activeTabID] oldHeight];
+        }      
+        FakeLocationBar __weak *flb = [activeTab fakeLocBar];
+        CGFloat delta = c - [flb oldHeight];
         CGFloat percentMinimized = (minDelt/maxHeightDelta);
         CGFloat radiusDelta = percentMinimized*locBarCornerRadius;
         CGFloat alphaDelta = alphaOffset + ((maxHeightDelta-minDelt)/maxHeightDelta)*blurAlpha;
-        [fakeLocBars[activeTabID] setOldHeight: c];
+        [flb setOldHeight: c];
         if (delta != 0) {
-            UIVisualEffectView* main = [fakeLocBars[activeTabID] mainVisualEffect];
-            __weak id sub1 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:0];
-            __weak id sub2 = [[fakeLocBars[activeTabID] effectViews] objectAtIndex:1];
+            UIVisualEffectView __weak *main = [flb mainVisualEffect];
+            UIVisualEffectView __weak *sub1 = [flb subEffect1];
+            UIVisualEffectView __weak *sub2 = [flb subEffect2];
             [[self fakeLocationBar] setBackgroundColor:[blurColor colorWithAlphaComponent: alphaOffset]];
             [main setBackgroundColor: [blurColor colorWithAlphaComponent: alphaDelta]];
             [[main layer] setCornerRadius:radiusDelta];
@@ -903,16 +859,6 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     - (void)setFakeboxHighlighted:(BOOL)arg {
         return;
     }
-    
-    - (void)dealloc {
-        NSNumber* hsh = [[NSNumber alloc] initWithUnsignedInteger:[self hash]];
-        if (headerViews[hsh]) {
-            [headerViews[hsh] needsReInit];
-            [headerViews removeObjectForKey:hsh];
-        }
-        %orig;
-    }
-    
 %end    
  
  // NAVBARS/TOOLBARS IN MENUS (e.g. bookmarks, recent tabs)
