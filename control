@@ -1,6 +1,7 @@
 Package: com.nwhit.darkchrome
 Name: DarkChrome
 Depends: mobilesubstrate
+Conflicts: com.nwhit.darkchromeb
 Version: 1.1.1.3
 Architecture: iphoneos-arm
 Description: A complete dark mode for Chrome
