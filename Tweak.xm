@@ -1164,6 +1164,12 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         %orig(true);
     }
 %end
+
+%hook SelfSizingTableView
+    - (void)setBackgroundColor:(UIColor*)arg {
+        %orig(altfg);
+    }
+%end
     
 %hook OmniboxPopupRow
     -(void)initWithIncognito:(BOOL)arg {
