@@ -12,7 +12,7 @@ include $(THEOS)/makefiles/bundle.mk
 DarkChrome_FILES = Tweak.xm
 DarkChrome_FRAMEWORKS = UIKit Foundation
 DarkChrome_CFLAGS += -fobjc-arc
-export ARCHS = arm64
+export ARCHS = arm64 arm64e
 DEBUG=0
 include $(THEOS_MAKE_PATH)/tweak.mk
 SUBPROJECTS += darkchromeprefs
