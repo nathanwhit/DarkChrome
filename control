@@ -1,5 +1,6 @@
 Package: com.nwhit.darkchrome
 Name: DarkChrome
+Pre-Depends: firmware (>= 11.0)
 Depends: mobilesubstrate
 Conflicts: com.nwhit.darkchromeb
 Version: 1.1.1.4

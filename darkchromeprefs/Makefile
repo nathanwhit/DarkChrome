@@ -1,5 +1,4 @@
 include $(THEOS)/makefiles/common.mk
-
 BUNDLE_NAME = DarkChromePrefs
 DarkChromePrefs_FILES = DRKCRootListController.m
 DarkChromePrefs_INSTALL_PATH = /Library/PreferenceBundles
