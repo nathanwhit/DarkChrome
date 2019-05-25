@@ -13,6 +13,7 @@ UIColor * altfg;
 UIColor * sep;
 UIColor * blurColor;
 bool useIncognitoIndicator;
+bool opaqueKeyboard;
 CGFloat fakeLocBarMinHeight;
 CGFloat fakeLocBarExpandedHeight;
 CGFloat maxHeightDelta;
@@ -48,7 +49,8 @@ NSBundle *resBundle;
         else {
             preferences = @{
                 @"useIncognitoIndicator" : @true,
-                @"colorScheme" : @"dark",
+                @"opaqueKeyboard" : @false,
+                @"colorScheme" : @"dark"
             };
         }
     
@@ -64,6 +66,12 @@ NSBundle *resBundle;
         useIncognitoIndicator = false;
     } else {
         useIncognitoIndicator = true;
+    }
+
+    if ([preferences[@"opaqueKeyboard"] boolValue]) {
+        opaqueKeyboard = true;
+    } else {
+        opaqueKeyboard = false;
     }
 
     NSDictionary *darkScheme = @{
@@ -352,8 +360,15 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 
         [v setBackgroundColor: kbColor];
         return v;
+%hook UIKBBackdropView
+- (void)setBackgroundColor:(UIColor*)color {
+    if (opaqueKeyboard) {
+        %orig(kbColor);
     }
-
+    else {
+        %orig;
+    }
+}
 %end
 
 %hook ToolbarKeyboardAccessoryView

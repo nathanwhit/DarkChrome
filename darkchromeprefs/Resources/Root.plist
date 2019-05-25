@@ -44,6 +44,18 @@
 		</dict>
 		<dict>
 			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.nwhit.darkchromeprefs</string>
+			<key>key</key>
+			<string>opaqueKeyboard</string>
+			<key>label</key>
+			<string>Make Keyboard Background Opaque</string>
+            <key>default</key>
+            <false/>
+		</dict>
+		<dict>
+			<key>cell</key>
 			<string>PSGroupCell</string>
             <key>footerText</key>
             <string>Invert the colors of the Omnibox search button when you're in incognito</string>
