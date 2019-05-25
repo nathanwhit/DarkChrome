@@ -5,6 +5,10 @@
 @interface FormSuggestionLabel : UIView
 @end
 
+@interface FormSuggestionView : UIView
+@property (nonatomic, strong) UIStackView *stackView;
+@end
+
 @interface AutofillEditAccessoryView : UIView
 @property (strong) UIButton *nextButton;
 @property (strong) UIButton *previousButton;
@@ -18,7 +22,7 @@
 @property (strong) UIView *view;
 @end
 
-@interface FormInputAccessoryView
+@interface FormInputAccessoryView : UIView
 @property (strong) UIView *leadingView;
 @property (strong) UIButton *nextButton;
 @property (strong) UIButton *previousButton;

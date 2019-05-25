@@ -122,9 +122,9 @@ NSBundle *resBundle;
 
 // CONSTANTS
 // COLORS
-static UIColor * txt = [UIColor colorWithWhite:0.9 alpha:1];
+static UIColor * kTextColor = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * clear = [UIColor colorWithWhite:0 alpha:0];
-static UIColor * hint = [UIColor colorWithWhite:0.6 alpha:1];
+static UIColor * hintColor = [UIColor colorWithWhite:0.6 alpha:1];
 static UIColor * white = [UIColor colorWithWhite:1 alpha:1];
 static UIColor * tab_bar = [UIColor colorWithWhite:0.9 alpha:1];
 static UIColor * detail = [UIColor colorWithWhite:1 alpha:0.5];
@@ -267,7 +267,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 
     - (void)setStableColor:(UIColor*)color {
-        %orig(txt);
+        %orig(kTextColor);
     }
 
     - (void)setUnstableColor:(UIColor*)color {
@@ -305,61 +305,54 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
             return suggest;
         }
         __weak UILabel *label = (UILabel*)(lbl);
-        [label setTextColor:txt];
+        [label setTextColor:kTextColor];
         return suggest;
 
     }
 %end
 
 %hook FormInputAccessoryView
-    - (void)setUpWithLeadingView:(id)arg1 navigationDelegate:(id)arg2 {
-        %orig;
-        __weak id v = [self leadingView];
-        [v setBackgroundColor:kbColor];
-        [v setOpaque:false];
+    - (void)setBackgroundColor:(UIColor*)color {
+        %orig(kbColor);
     }
-    - (void)setLeadingView:(id)arg {
-        %orig;
-        __weak id v = arg;
-        [v setBackgroundColor:kbColor];
-        [v setOpaque:false];
-    }
-
-    - (void)setUpWithLeadingView:(id)arg1 customTrailingView:(id)arg2 navigationDelegate:(id)arg3 {
-        %orig;
-        __weak id v = [self leadingView];
-        [v setBackgroundColor:kbColor];
-        [v setOpaque:false];
-    }
-
-    - (UIView*)viewForNavigationButtons {
-        UIView* v = %orig;
-        UIButton *button = [self nextButton];
-        CGSize size = CGSizeMake(0, 0);
-        setButtonBackground(@"autofill_next", button, size, false);
-        [button setBackgroundColor:kbColor];
-
-        button = [self previousButton];
-        setButtonBackground(@"autofill_prev", button, size, false);
-        [button setBackgroundColor:kbColor];
-
-        if ([[v subviews] count] < 5) {
-            return v;
+    - (void)addSubview:(UIView*)subview {
+        if ([subview isMemberOfClass:[UIImageView class]]) {
+            subview.hidden = YES;
         }
+        else if ([subview isMemberOfClass:[UIView class]]) {
+            subview.backgroundColor = kbColor;
+        }
+        else if ([subview isMemberOfClass:[UIStackView class]]) {
+            for (UIView* v in [subview subviews]) {
+                if ([v isKindOfClass:[UIButton class]]) {
+                    if ([(UIButton*)v titleLabel]) {
+                        v.tintColor = kTextColor;
+                    }
+                }
+            }
+        }
+        %orig;
+    }
+    - (void)insertSubview:(UIView*)subview aboveSubview:(UIView*)arg2 {
+        if ([subview isMemberOfClass:[UIImageView class]]) {
+            subview.hidden = YES;
+        }
+        %orig;
+    }
+    - (void)insertSubview:(UIView*)subview belowSubview:(UIView*)arg2 {
+        if ([subview isMemberOfClass:[UIImageView class]]) {
+            subview.hidden = YES;
+        }
+        %orig;
+    }
+%end
 
-        button = [[v subviews] objectAtIndex: 5];
-        setButtonBackground(@"autofill_close", button, size, true);
-        [button setBackgroundColor:kbColor];
+%hook ManualFillAccessoryViewController
+- (id)activeTintColor {
+    return kTextColor;
+}
+%end
 
-        UIImageView *sepView = [[v subviews] objectAtIndex: 0];
-        [sepView setImage:[UIImage imageWithContentsOfFile:[resBundle pathForResource:@"autofill_left_sep" ofType:@"png"]]];
-        sepView = [[v subviews] objectAtIndex: 2];
-        [sepView setHidden:true];
-        sepView = [[v subviews] objectAtIndex: 4];
-        [sepView setHidden:true];
-
-        [v setBackgroundColor: kbColor];
-        return v;
 %hook UIKBBackdropView
 - (void)setBackgroundColor:(UIColor*)color {
     if (opaqueKeyboard) {
@@ -374,7 +367,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 %hook ToolbarKeyboardAccessoryView
     - (UIView*)shortcutButtonWithTitle:(NSString*)title {
         UIButton* button = (UIButton*)%orig;
-        [button setTitleColor:txt forState:UIControlStateNormal];
+        [button setTitleColor:kTextColor forState:UIControlStateNormal];
         [button setTitleColor:detail forState:UIControlStateHighlighted];
         return button;
     }
@@ -453,7 +446,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         ChromeTableViewStyler * tblStyler = %orig;
         [tblStyler setTableViewSectionHeaderBlurEffect:[UIBlurEffect effectWithStyle:2]];
         [tblStyler setCellBackgroundColor:fg];
-        [tblStyler setCellTitleColor:txt];
+        [tblStyler setCellTitleColor:kTextColor];
         [tblStyler setCellSeparatorColor:sep];
         return tblStyler;
     }
@@ -467,7 +460,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     }
 
     - (void)setCellTitleColor:(id)arg {
-        %orig(txt);
+        %orig(kTextColor);
     }
 
     - (void)setCellSeparatorColor:(id)arg {
@@ -506,7 +499,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         %orig;
         if ([arg1 respondsToSelector:@selector(titleLabel)]) {
             [[arg1 titleLabel] setBackgroundColor:clear];
-            [[arg1 titleLabel] setTextColor:txt];
+            [[arg1 titleLabel] setTextColor:kTextColor];
         }
         
         [[arg1 imageView] setBackgroundColor:clear];
@@ -517,7 +510,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
         if ([arg1 respondsToSelector:@selector(textLabel)]) {
-            [[arg1 textLabel] setTextColor:txt];
+            [[arg1 textLabel] setTextColor:kTextColor];
             [[arg1 textLabel] setBackgroundColor:fg];
         }   
     }
@@ -528,7 +521,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         %orig;
         if ([arg1 respondsToSelector:@selector(titleLabel)]) {
             [[arg1 titleLabel] setBackgroundColor:clear];
-            [[arg1 titleLabel] setTextColor:txt];
+            [[arg1 titleLabel] setTextColor:kTextColor];
             [[arg1 imageView] setBackgroundColor:clear];
         }
     }
@@ -541,7 +534,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 %hook AutofillDataCell
     - (id)initWithStyle:(NSInteger)arg1 reuseIdentifier:(id)arg2 {
         AutofillDataCell * cell = %orig;
-        [[cell textLabel] setTextColor:txt];
+        [[cell textLabel] setTextColor:kTextColor];
         return cell;
     }
 %end    
@@ -560,7 +553,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
         if ([arg isKindOfClass:%c(SettingsTextCell)]) {
             __weak SettingsTextCell *cell = (SettingsTextCell*)(arg);
             %orig;
-            [[cell textLabel] setTextColor:txt];
+            [[cell textLabel] setTextColor:kTextColor];
             [[cell contentView] setBackgroundColor:fg];
         }
         else {
@@ -608,11 +601,11 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
             if ([v isKindOfClass:%c(UIStackView)]) {
                 for (__weak UILabel* lab in [v arrangedSubviews]) {
                     [lab setBackgroundColor:clear];
-                    [lab setTextColor:txt];
+                    [lab setTextColor:kTextColor];
                 }
             } else {
                 [v setBackgroundColor:clear];
-                [v setTextColor:txt];
+                [v setTextColor:kTextColor];
             }
         }
         if (stack) {
@@ -672,7 +665,7 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
 %hook ContentSuggestionsCell
     + (void)configureTitleLabel:(id)lbl {
         %orig;
-        [lbl setTextColor:txt];
+        [lbl setTextColor:kTextColor];
     }
     - (void)drawSeparatorIfNeeded {
         %orig;
@@ -759,7 +752,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     - (void)configureCell:(id)cell {
         %orig;
         if ([cell respondsToSelector: @selector(additionalInformationLabel)]) {
-            [[cell additionalInformationLabel] setTextColor:txt];
+            [[cell additionalInformationLabel] setTextColor:kTextColor];
         }
     }
 %end
@@ -824,7 +817,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     - (void)addViewsToSearchField:(id)arg {
         %orig;
         if ([self searchHintLabel] != nil) {
-            [[self searchHintLabel] setTextColor:hint];
+            [[self searchHintLabel] setTextColor:hintColor];
         }
         if (![arg isKindOfClass:buttonClass] || [[arg subviews] count] < 1 || activeTab == nil) {
             return;
@@ -987,7 +980,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
         if ([arg1 respondsToSelector: @selector(titleLabel)]) {
-            [[arg1 titleLabel] setTextColor:txt];
+            [[arg1 titleLabel] setTextColor:kTextColor];
         }
     }
 %end
@@ -1035,7 +1028,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     }
     - (id)textLabel {
         UILabel * lbl = %orig;
-        [lbl setTextColor:txt];
+        [lbl setTextColor:kTextColor];
         return lbl;
     }
 %end
@@ -1044,7 +1037,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
         if ([arg1 respondsToSelector: @selector(textLabel)]) {
-            [[arg1 textLabel] setTextColor:txt];
+            [[arg1 textLabel] setTextColor:kTextColor];
         }
     }
     
@@ -1054,7 +1047,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
     - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
         %orig;
         if ([arg1 respondsToSelector: @selector(textLabel)]) {
-            [[arg1 textLabel] setTextColor:txt];
+            [[arg1 textLabel] setTextColor:kTextColor];
         }
     }
 %end
@@ -1063,7 +1056,7 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
 - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
     %orig;
     if ([arg1 respondsToSelector: @selector(textLabel)]) {
-        [[arg1 textLabel] setTextColor:txt];
+        [[arg1 textLabel] setTextColor:kTextColor];
     }
 }
 %end
