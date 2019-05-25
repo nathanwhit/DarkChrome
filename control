@@ -3,7 +3,7 @@ Name: DarkChrome
 Pre-Depends: firmware (>= 11.0)
 Depends: mobilesubstrate
 Conflicts: com.nwhit.darkchromeb
-Version: 1.1.1.4
+Version: 1.1.1.5
 Architecture: iphoneos-arm
 Description: A complete dark mode for Chrome
 Maintainer: Nathan Whitaker
