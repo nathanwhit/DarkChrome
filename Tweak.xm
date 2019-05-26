@@ -1190,3 +1190,10 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
         return UIStatusBarStyleLightContent;
     }
 %end
+
+//  TAB VIEW (iPad version)
+%hook TabView
+- (void)setIncognitoStyle:(BOOL)arg {
+    %orig(YES);
+}
+%end
