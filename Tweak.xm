@@ -780,12 +780,6 @@ static UIImage* handleSettingsCell(id cell, __weak id image, __weak id superview
             }
         }
     }
-    - (void)shutdown {
-        if ([self isOffTheRecord]==NO) {
-            tabObserver = nil;
-        }
-        %orig;
-    }
 %end
 
 %hook TabModel
