@@ -2,3 +2,4 @@
 /InspCWrapper.m
 /logs/*
 /*.orig
+**/*.DS_Store*
