@@ -6,7 +6,7 @@
 #include <os/log.h>
 
 #define log(str) os_log(OS_LOG_DEFAULT, str)
-#define logf(form, str) os_log(OS_LOG_DEFAULT, form, str)
+#define logf(fmt, ...) os_log(OS_LOG_DEFAULT, fmt, __VA_ARGS__)
 
 @interface FakeLocationBar : NSObject
     @property (weak) UIVisualEffectView *subEffect1;
