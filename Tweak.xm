@@ -143,6 +143,7 @@ static Class visEffectViewClass = %c(UIVisualEffectView);
 static Class buttonClass = %c(UIButton);
 static Class visEffectSubviewClass = %c(_UIVisualEffectSubview);
 static Class visEffectBackdropClass = %c(_UIVisualEffectBackdropView);
+static Class detailCellClass = %c(TableViewDetailIconCell);
 
 static CGFloat locBarCornerRadius = 25; 
 
@@ -513,6 +514,22 @@ static void setButtonBackground(NSString* name, __weak UIButton* button, CGSize 
             [[arg1 textLabel] setTextColor:kTextColor];
             [[arg1 textLabel] setBackgroundColor:fg];
         }   
+    }
+%end
+
+%hook TableViewDetailIconItem
+    - (void)configureCell:(id)arg1 withStyler:(id)arg2 {
+        logf("configuring cell with styler : %{public}@", arg2);
+        %orig;
+        if ([arg1 isKindOfClass: %c(TableViewDetailIconCell)]) {
+            log("Type matches");
+            TableViewDetailIconCell *cell = (TableViewDetailIconCell*)arg1;
+            logf("Text label : %{public}@", cell.textLabel);
+            cell.textLabel.textColor = kTextColor;
+            [cell.textLabel _setTextColorFollowsTintColor:YES];
+            [cell.textLabel setTintColor: kTextColor];
+            cell.backgroundColor = bg;
+        }
     }
 %end
 

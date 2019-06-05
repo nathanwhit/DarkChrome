@@ -246,6 +246,14 @@
 - (id)stackView;
 @end
 
+@interface TableViewDetailIconCell : UITableViewCell
+@property (nonatomic, strong) UILabel *textLabel;
+@end
+
+@interface UILabel (priv)
+@property (nonatomic, assign, setter=_setTextColorFollowsTintColor:) BOOL _textColorFollowsTintColor;
+@end
+
 @interface SettingsTextCell : NSObject
 @property (nonatomic, strong) UIView *inkView;
 @property (nonatomic, strong) UILabel *textLabel;
